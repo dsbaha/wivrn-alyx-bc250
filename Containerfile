@@ -19,6 +19,7 @@ RUN dnf install -y --setopt=install_weak_deps=False \
       git cmake ninja-build gcc-c++ pkgconf \
       vulkan-headers vulkan-loader-devel \
       libva-devel libdrm-devel mesa-libGL-devel \
+      glslang \
     && dnf clean all
 
 RUN git clone --depth 1 --branch ${BC250_VERSION} \
@@ -27,8 +28,8 @@ RUN git clone --depth 1 --branch ${BC250_VERSION} \
         -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/usr \
     && cmake --build /tmp/bc250/build -j$(nproc) \
     && DESTDIR=/tmp/bc250-install cmake --install /tmp/bc250/build \
-    && ls -lh /tmp/bc250-install/usr/lib64/dri/bc250_drv_video.so \
-    && ls -lh /tmp/bc250-install/usr/share/bc250/shaders | head
+    && test -f /tmp/bc250-install/usr/lib64/dri/bc250_drv_video.so \
+    && ls /tmp/bc250-install/usr/share/bc250/shaders/*.spv
 
 # ---------- Stage 2: GoW WiVRn base + driver overlay ----------
 # Pin by digest in production — :edge floats. Get the digest with:
@@ -44,8 +45,11 @@ RUN dnf install -y --setopt=install_weak_deps=False \
     && dnf clean all
 
 # Copy ONLY the installed driver + shaders from the builder
+# Shaders are .spv files compiled by glslangValidator (see builder).
+# The driver searches BC250_SHADER_DIR, /usr/share/bc250/shaders,
+# /usr/lib64/dri/shaders, and beside the .so — we set the env below too.
 COPY --from=builder /tmp/bc250-install/usr/lib64/dri/bc250_drv_video.so /usr/lib64/dri/bc250_drv_video.so
-COPY --from=builder /tmp/bc250-install/usr/share/bc250/ /usr/share/bc250/
+COPY --from=builder /tmp/bc250-install/usr/share/bc250/shaders /usr/share/bc250/shaders
 
 # WiVRn config — VA-API, H.264
 # 2HW + 1SW topology: left/right eye via HW VA-API, alpha/foveation via SW.
@@ -61,6 +65,7 @@ RUN chown retro:retro /home/retro/.config/wivrn/config.json || true
 # H264_BACKEND=x264 = Zen 2 CPU offload, leaves GPU free for Alyx rendering.
 # Switch to `compute` only if CPU becomes the bottleneck.
 ENV LIBVA_DRIVER_NAME=bc250
+ENV BC250_SHADER_DIR=/usr/share/bc250/shaders
 ENV BC250_FAST_MODE=1
 ENV BC250_SLICES_PER_FRAME=2
 ENV BC250_H264_BACKEND=x264
