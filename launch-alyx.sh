@@ -28,10 +28,12 @@ fi
 echo "Alyx installed."
 
 echo "Launching Alyx via Steam (steam://launch/546560/VR)..."
-# Steam is already running in gamescope in this container. Sending the
-# steam:// URL to that instance triggers the launch with the per-game
-# LaunchOptions from setup-steam.sh (VR_OVERRIDE + GE-Proton 9-27).
-sudo podman exec "$CONTAINER" bash -c 'steam "steam://launch/546560/VR" >/tmp/alyx-launch.log 2>&1 & echo "launch command sent, pid $!"'
+echo "Must run as RETRO, not root: podman exec defaults to root (HOME=/root),"
+echo "so a bare 'steam steam://...' as root looks for Steam in /root, misses"
+echo "the retro Steam running in gamescope, and starts a second (broken) Steam"
+echo "instead of IPC-ing to the real one. Use gosu retro + HOME=/home/retro."
+sudo podman exec "$CONTAINER" gosu retro env HOME=/home/retro XDG_RUNTIME_DIR=/run/user/1000 bash -c 'steam "steam://launch/546560/VR" >/tmp/alyx-launch.log 2>&1 & echo "launch command sent, pid $!"'
+echo "Log inside container: /tmp/alyx-launch.log (as retro)"
 
 echo ""
 echo "Watch the launch:"

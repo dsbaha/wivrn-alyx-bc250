@@ -35,7 +35,8 @@ if sudo podman exec "$CONTAINER" test -f /home/retro/.local/share/Steam/steamapp
 fi
 
 echo "Triggering Alyx install via Steam client (steam://install/546560)..."
-sudo podman exec "$CONTAINER" bash -c 'steam "steam://install/546560" >/tmp/alyx-install.log 2>&1 & echo "install triggered"'
+echo "Must run as RETRO (gosu), not root — see launch-alyx.sh for why."
+sudo podman exec "$CONTAINER" gosu retro env HOME=/home/retro XDG_RUNTIME_DIR=/run/user/1000 bash -c 'steam "steam://install/546560" >/tmp/alyx-install.log 2>&1 & echo "install triggered"'
 
 echo "Polling for appmanifest_546560.acf (Ctrl-C to stop polling — install keeps running)..."
 for i in $(seq 1 120); do
