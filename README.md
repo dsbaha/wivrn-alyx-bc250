@@ -101,8 +101,16 @@ One-time login via the Steam client already in the container
 PATH and that's expected):
 
 ```bash
-podman exec -it wivrn-alyx steam -login <user> <pass> <GuardCode>
+./steam-login.sh <steam-username>
 ```
+
+That prompts for password + email Guard code, stops the running container,
+and runs a one-shot login as `retro` (HOME=/home/retro) with the same
+`wivrn-alyx-steam` volume, so the `ssfn*` + token actually land in the
+volume. Do NOT use `podman exec wivrn-alyx steam -login ...` — `podman
+exec` defaults to root (HOME=/root), so it talks to the wrong Steam and
+looks like it ignores your login, and a second `steam -login` while Steam
+is already running in gamescope just IPCs to the running instance.
 
 Or copy your already-logged-in host Steam files into the volume (see
 `setup-steam.sh` header / earlier notes: `config.vdf`, `loginusers.vdf`,
@@ -249,6 +257,7 @@ Wi-Fi has bandwidth headroom; latency is the bottleneck, so H.264 wins here.
   copies only driver + shaders onto GoW `wivrn:edge`.
 - `wivrn-config.json` — WiVRn VA-API, H.264, 50 Mbps.
 - `run.sh` — Podman run for Alyx.
+- `steam-login.sh` — one-shot Steam login as retro (fixes exec-as-root ignore).
 - `install-alyx.sh` — install Alyx via Steam client (NOT steamcmd).
 - `launch-alyx.sh` — launch Alyx after Quest connects ("waiting for app").
 - `check-apps.sh` — diagnose empty "pick an application" picker.
@@ -269,6 +278,8 @@ Wi-Fi has bandwidth headroom; latency is the bottleneck, so H.264 wins here.
 
 ## Troubleshooting
 
+- `steam -login` seems ignored → you ran it via `podman exec` (root,
+  HOME=/root) while Steam was already running. Use `./steam-login.sh`.
 - `steamcmd not found` / `steamcmd: command not found` → expected.
   This image installs the `steam` client, NOT `steamcmd`. Use
   `./install-alyx.sh` (Steam client) and `steam -login`, not `steamcmd`.
