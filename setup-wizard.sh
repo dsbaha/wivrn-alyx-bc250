@@ -37,16 +37,32 @@ STEAM_ROOTS="/home/retro/.local/share/Steam /home/retro/.steam/debian-installati
 HOST_IP="$(hostname -I 2>/dev/null | awk '{print $1}')"
 HOST_IP="${HOST_IP:-<CoreOS-IP>}"
 
-# Find Alyx manifest in ANY Steam root. Prints the manifest path or empty.
+# Find Alyx manifest in ANY Steam root OR any library folder in libraryfolders.vdf.
+# Steam can install to a secondary library folder, not just the default steamapps/.
+# Fallback: broad find for appmanifest_546560.acf under /home/retro.
 find_alyx_manifest() {
-  local c="$1" root m
+  local c="$1" root m lib
   for root in $STEAM_ROOTS; do
     m="$root/steamapps/appmanifest_546560.acf"
     if sudo podman exec "$c" test -f "$m" 2>/dev/null; then
       echo "$m"
       return 0
     fi
+    # Secondary libraries from libraryfolders.vdf — paths are quoted "path" "…"
+    for lib in $(sudo podman exec "$c" bash -c "grep -oE '\"path\"[[:space:]]*\"[^\"]+\"' $root/steamapps/libraryfolders.vdf 2>/dev/null | sed -E 's/.*\"([^\"]+)\"$/\1/'" 2>/dev/null || true); do
+      m="$lib/steamapps/appmanifest_546560.acf"
+      if sudo podman exec "$c" test -f "$m" 2>/dev/null; then
+        echo "$m"
+        return 0
+      fi
+    done
   done
+  # Broad fallback: find anywhere under /home/retro (slow but definitive)
+  m="$(sudo podman exec "$c" bash -c 'find /home/retro -name "appmanifest_546560.acf" 2>/dev/null | head -n 1' 2>/dev/null || true)"
+  if [[ -n "$m" ]]; then
+    echo "$m"
+    return 0
+  fi
   return 1
 }
 
@@ -126,8 +142,9 @@ pause
 step 3 "Waiting for Alyx download (~67 GB)"
 
 echo "Polling for Alyx manifest + download progress (Ctrl-C to stop — download keeps running)..."
-echo "Checks BOTH Steam roots (~/.local/share/Steam AND ~/.steam/debian-installation)."
-echo "Tip: you can leave this running and come back later; re-run ./setup-wizard.sh to resume."
+echo "Checks default steamapps + libraryfolders.vdf secondary libraries + broad find."
+echo "If Steam shows Alyx as installed but no manifest is found, run ./find-alyx.sh —"
+echo "it checks libraryfolders.vdf + every Podman volume (incl. old wivrn-data)."
 while true; do
   MANIFEST="$(find_alyx_manifest "$SETUP_CONTAINER" || true)"
   if [[ -n "$MANIFEST" ]]; then

@@ -1,54 +1,63 @@
 #!/usr/bin/env bash
-# Find where Alyx actually is — checks BOTH Steam roots + all volumes.
-# Fedora Steam can install to either:
-#   ~/.local/share/Steam/steamapps/
-#   ~/.steam/debian-installation/steamapps/
-#   ~/.steam/steam/steamapps/  (symlink, usually -> debian-installation or .local/share)
-# The wizard used to check only the first root, so it said "not installed"
-# when Alyx was fully installed in the other root.
+# Find where Alyx ACTUALLY is — definitive version.
+# Previous versions only checked the default steamapps dir in two Steam roots.
+# That misses:
+#   - Secondary Steam library folders (libraryfolders.vdf) — Alyx can be in
+#     any library folder, not just the default steamapps/
+#   - Old volumes (wivrn-data, steam-data, etc.) from earlier repo versions
+# This script checks ALL of those: libraryfolders.vdf in every Steam root,
+# a broad find inside the container, AND every Podman volume on the host.
 set -euo pipefail
 
-CONTAINER="${CONTAINER:-wivrn-alyx}"
-# If the play container isn't running, check the setup container, else any container.
-for C in "$CONTAINER" wivrn-alyx-setup; do
+echo "=== 1. Containers (which one has Steam?) ==="
+sudo podman ps -a --filter name=wivrn-alyx --format '{{.Names}} {{.Status}}' || true
+
+echo ""
+echo "=== 2. Inside container: libraryfolders.vdf (ALL library folders) ==="
+for C in wivrn-alyx-setup wivrn-alyx; do
   if sudo podman ps --filter name="$C" --format '{{.Names}}' | grep -q .; then
-    CONTAINER="$C"
-    break
+    echo "--- container $C ---"
+    sudo podman exec "$C" bash -c '
+      for root in /home/retro/.local/share/Steam /home/retro/.steam/debian-installation /home/retro/.steam/steam; do
+        lf="$root/steamapps/libraryfolders.vdf"
+        if [ -f "$lf" ]; then
+          echo "libraryfolders.vdf in $root:"
+          cat "$lf" | grep -E "\"path\"|\"label\"" | head -n 20
+          echo ""
+        fi
+      done
+    ' || true
   fi
 done
 
-echo "Checking container: $CONTAINER"
 echo ""
-
-echo "=== appmanifest_546560.acf (any Steam root) ==="
-sudo podman exec "$CONTAINER" bash -c '
-  for root in ~/.local/share/Steam ~/.steam/debian-installation ~/.steam/steam; do
-    m="$root/steamapps/appmanifest_546560.acf"
-    if [ -f "$m" ]; then
-      echo "FOUND: $m"
-      grep -E "StateFlags|BytesDownloaded|BytesToDownload|installdir" "$m" | head -n 5
-      echo ""
-    else
-      echo "not in: $root"
-    fi
-  done
-  echo "--- find (slow, definitive) ---"
-  find ~ -name "appmanifest_546560.acf" 2>/dev/null | head -n 5 || echo "find: none"
-'
+echo "=== 3. Inside container: appmanifest_546560.acf ANYWHERE under /home/retro ==="
+for C in wivrn-alyx-setup wivrn-alyx; do
+  if sudo podman ps --filter name="$C" --format '{{.Names}}' | grep -q .; then
+    echo "--- container $C ---"
+    sudo podman exec "$C" bash -c 'find /home/retro -name "appmanifest_546560.acf" 2>/dev/null | head -n 10; echo "(end find)"; find /home/retro -maxdepth 6 -type d -name "Half-Life Alyx" 2>/dev/null | head -n 10; echo "(end dir find)"' || true
+  fi
+done
 
 echo ""
-echo "=== Alyx game dir (any Steam root) ==="
-sudo podman exec "$CONTAINER" bash -c '
-  for root in ~/.local/share/Steam ~/.steam/debian-installation ~/.steam/steam; do
-    d="$root/steamapps/common/Half-Life Alyx"
-    if [ -d "$d" ]; then echo "FOUND: $d ($(du -sh "$d" 2>/dev/null | cut -f1))"; fi
-  done
-  find ~ -maxdepth 5 -type d -name "Half-Life Alyx" 2>/dev/null | head -n 5 || true
-'
+echo "=== 4. Host volumes: search EVERY wivrn/steam volume mountpoint ==="
+for VOL in $(sudo podman volume ls --format '{{.Name}}' | grep -iE 'wivrn|steam|alyx' || true); do
+  MP="$(sudo podman volume inspect "$VOL" --format '{{.Mountpoint}}' 2>/dev/null || true)"
+  echo "--- volume $VOL -> $MP ---"
+  if [[ -n "$MP" && -d "$MP" ]]; then
+    sudo find "$MP" -maxdepth 5 -name "appmanifest_546560.acf" 2>/dev/null | head -n 5 || true
+    sudo find "$MP" -maxdepth 5 -type d -name "Half-Life Alyx" 2>/dev/null | head -n 5 || true
+    echo "  top-level: $(sudo ls "$MP" 2>/dev/null | head -n 10 | tr '\n' ' ')"
+  else
+    echo "  (no mountpoint or not a dir)"
+  fi
+done
 
 echo ""
-echo "=== Volumes (host side — where did it actually land?) ==="
-sudo podman volume ls --format '{{.Name}}' | grep -i wivrn || echo "no wivrn volumes"
-echo "(If you have an OLD volume like wivrn-data / steam-data from an early"
-echo " version, Alyx may be in there, not in wivrn-alyx-steam. Check:"
-echo "  sudo podman volume inspect <name>  — look at Mountpoint, then ls that dir)"
+echo "=== 5. All Podman volumes (in case the name doesn't contain wivrn/steam) ==="
+sudo podman volume ls --format '{{.Name}}' || true
+echo ""
+echo "If Alyx is in an OLD volume (e.g. wivrn-data, steam-data) and NOT in"
+echo "wivrn-alyx-steam, the fix is to point the play container at that volume"
+echo "(or copy the Steam data into wivrn-alyx-steam). Paste this output and"
+echo "the wizard can be pointed at the right volume instead of re-downloading."
