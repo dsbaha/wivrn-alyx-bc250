@@ -24,6 +24,7 @@ DeviceCgroupRule=c 244:* rwm
 Volume=wivrn-alyx-steam.volume:/home/retro/.local/share/Steam:Z
 Volume=wivrn-alyx-wivrn.volume:/home/retro/.config/wivrn:Z
 Environment=GAMESCOPE_BACKEND=headless
+Environment=WIVRN_APPLICATION=["steam", "steam://launch/546560/VR"]
 Environment=LIBVA_DRIVER_NAME=bc250
 Environment=BC250_FAST_MODE=1
 Environment=BC250_SLICES_PER_FRAME=2

@@ -123,7 +123,34 @@ globally to xrizer just for Alyx — use the per-game `VR_OVERRIDE` above.
    `WiVRn/WiVRn-APK`). Client and server must be the same WiVRn version.
 2. In the WiVRn app: **disable hand tracking**, wake the physical controllers
    **before** connecting. Hand tracking on + controllers asleep = `ERROR_SESSION_LOST`.
-3. Connect to the server, launch Alyx from WiVRn's in-headset application menu.
+3. Connect to the server. `run.sh` sets
+   `WIVRN_APPLICATION=["steam", "steam://launch/546560/VR"]`, so WiVRn
+   auto-launches Alyx on connect — you should not have to pick anything.
+   If you instead see "pick an application to start streaming" with an
+   empty list, Alyx isn't installed yet (see below).
+
+### "Pick an application" with an empty list?
+
+That picker lists VR apps from Steam's `steamapps.vrmanifest`. Empty =
+Alyx isn't installed, or Steam hasn't created the manifest yet.
+
+On the CoreOS box, run:
+
+```bash
+./check-apps.sh
+```
+
+It checks: is wivrn-server listening, what WiVRn config is actually in
+use, does the Steam VR manifest exist, is Alyx installed
+(`appmanifest_546560.acf`), and the last 40 lines of container logs.
+
+If Alyx is NOT installed, install it first, then reconnect:
+
+```bash
+podman exec -it wivrn-alyx steamcmd +login <user> <pass> +app_update 546560 validate +quit
+# then run ./setup-steam.sh (Proton + VR_OVERRIDE) if you haven't yet
+# then restart the container and reconnect from the Quest
+```
 
 ## How video gets there
 
@@ -153,6 +180,7 @@ Wi-Fi has bandwidth headroom; latency is the bottleneck, so H.264 wins here.
   copies only driver + shaders onto GoW `wivrn:edge`.
 - `wivrn-config.json` — WiVRn VA-API, H.264, 50 Mbps.
 - `run.sh` — Podman run for Alyx.
+- `check-apps.sh` — diagnose empty "pick an application" picker.
 - `setup-steam.sh` — one-time Alyx Proton + launch-option edits, no GUI.
 - `wivrn-alyx.container` — Quadlet / systemd version of `run.sh`.
 - `wivrn-alyx-steam.volume` / `wivrn-alyx-wivrn.volume` — named-volume
@@ -169,6 +197,10 @@ Wi-Fi has bandwidth headroom; latency is the bottleneck, so H.264 wins here.
 
 ## Troubleshooting
 
+- "Pick an application to start streaming" with empty list → Alyx not
+  installed yet, or Steam manifest missing. Run `./check-apps.sh` on the
+  CoreOS box. `run.sh` now sets `WIVRN_APPLICATION` to auto-launch Alyx,
+  so a fresh pull + restart should skip the picker once Alyx is installed.
 - `xdg_backend couldn't connect to wayland display` → gamescope was
   trying `--backend wayland` (nested in a host compositor, which Wolf
   provides but headless Podman does not). Fixed in this repo: the
