@@ -81,10 +81,19 @@ Same flags, Quadlet form. Inspect volumes with
 ### Steam Guard
 
 Steam Guard is Valve's 2FA. The container looks like a brand-new device, so
-the first login asks for a one-time code from email or the Steam Mobile App
-(Steam Guard → 5-character code, refreshes every 30s). After that one login,
-it caches a sentry file (`ssfn*`) + auth token in the `wivrn-alyx-steam`
-named volume, and later runs skip the prompt as long as you keep that volume.
+the first login asks for a one-time code. If you only have the **email**
+authenticator (no mobile app), the code is **in your email** — Steam sends
+it to the email on your Steam account each time you log in from a new
+device. It is NOT in an authenticator app, and it is NOT a TOTP.
+
+- Trigger it: `podman exec -it wivrn-alyx steam -login <user> <pass>`
+  (without a code, Steam sends the email and asks for the code).
+- Check your email inbox for a message from `noreply@steampowered.com`,
+  subject like "Steam Guard" / "Access from new computer/device".
+  The code is 5 characters (letters + numbers), e.g. `ABC12`.
+  Check Spam / Promotions if you don't see it — it expires quickly.
+- Then log in with the code:
+  `podman exec -it wivrn-alyx steam -login <user> <pass> <CODE>`
 
 One-time login via the Steam client already in the container
 (`steamcmd` is NOT installed in this image — the GoW image installs the
@@ -97,7 +106,8 @@ podman exec -it wivrn-alyx steam -login <user> <pass> <GuardCode>
 
 Or copy your already-logged-in host Steam files into the volume (see
 `setup-steam.sh` header / earlier notes: `config.vdf`, `loginusers.vdf`,
-`ssfn*`, `userdata/`). Treat the `wivrn-alyx-steam` volume as sensitive —
+`ssfn*`, `userdata/`). That bypasses Steam Guard entirely — no email code
+needed. Treat the `wivrn-alyx-steam` volume as sensitive —
 it holds auth tokens.
 
 ### Install Alyx
