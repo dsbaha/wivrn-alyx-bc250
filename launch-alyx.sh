@@ -27,6 +27,22 @@ if ! sudo podman exec "$CONTAINER" test -f /home/retro/.local/share/Steam/steama
 fi
 echo "Alyx installed."
 
+# Auto-set Alyx Low before EVERY launch (prevents GPU hang / crash).
+# Low is required on BC-250 — if Steam Cloud reverted video.txt to
+# Medium/High, Alyx will hang the gfx ring again. So launch-alyx.sh
+# forces Low (fidelity 0) in BOTH game-dir and Steam Cloud copies
+# before launching, every time. Set ALYX_LOW=0 to skip (e.g. testing Medium).
+if [[ "${ALYX_LOW:-1}" != "0" ]]; then
+  echo "Auto-setting Alyx Low (ALYX_LOW=1, set ALYX_LOW=0 to skip)..."
+  CONTAINER="$CONTAINER" ./set-alyx-low.sh >/tmp/alyx-low.log 2>&1 || {
+    echo "WARNING: set-alyx-low.sh failed (see /tmp/alyx-low.log) — launching anyway."
+    echo "If Alyx crashes, check video.txt fidelity is 0."
+  }
+  echo "Alyx Low set (see /tmp/alyx-low.log for before/after)."
+else
+  echo "ALYX_LOW=0 — skipping auto Low (you asked for non-Low)."
+fi
+
 echo "Launching Alyx via Steam (steam://launch/546560/VR)..."
 echo "Must run as RETRO, not root: podman exec defaults to root (HOME=/root),"
 echo "so a bare 'steam steam://...' as root hits Steam's 'cannot run as root user'"

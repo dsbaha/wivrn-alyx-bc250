@@ -22,7 +22,27 @@ set -euo pipefail
 sudo podman volume exists wivrn-alyx-steam || sudo podman volume create wivrn-alyx-steam
 sudo podman volume exists wivrn-alyx-wivrn || sudo podman volume create wivrn-alyx-wivrn
 
-# NOTE: WIVRN_APPLICATION auto-launch was reverted (regression in 214c58b).
+# ---------------------------------------------------------------- WiVRn PIN
+# WiVRn has NO fixed-PIN config — the PIN is randomly generated (6 digits)
+# for FIRST pairing only, printed as "To pair a new headset use PIN code: XXXXXX"
+# in the logs + a desktop notification you never see headless.
+# After first pairing, the headset's public key is stored in known_keys
+# (in the wivrn-alyx-wivrn volume) and the PIN is NEVER needed again —
+# known headsets reconnect with the stored key (code uses "000000" internally).
+# So the "stable PIN" is: pair ONCE, keep the volume, never need a PIN again.
+# If you keep seeing a PIN every time, known_keys is not persisting —
+# check that wivrn-alyx-wivrn volume is mounted (it is, above) and not wiped.
+#
+# To set YOUR preferred PIN for first pairing, put it here:
+#   WIVRN_PIN=xxx
+# Replace xxx with your 6-digit PIN (e.g. WIVRN_PIN=123456).
+# NOTE: WiVRn will still generate a RANDOM PIN for first pairing — this
+# variable does NOT set it (WiVRn has no such option). It is here as a
+# reminder of the PIN you used, and ./show-pin.sh will print the CURRENT
+# random PIN from the logs so you don't have to dig:
+#   ./show-pin.sh
+# After first pairing, you can delete this line — PIN is not needed again.
+WIVRN_PIN=xxx
 # It broke Quadlet parsing (spaces/quotes in Environment=) and could stop
 # the container from starting, so WiVRn never advertised on the LAN.
 # To opt back into auto-launch with run.sh only, add this line above
