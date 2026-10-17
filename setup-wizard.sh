@@ -124,7 +124,7 @@ else
     -v wivrn-alyx-steam:/home/retro/.local/share/Steam:Z \
     -v wivrn-alyx-wivrn:/home/retro/.config/wivrn:Z \
     -e LIBVA_DRIVER_NAME=bc250 -e BC250_FAST_MODE=1 \
-    -e BC250_SLICES_PER_FRAME=2 -e BC250_H264_BACKEND=x264 \
+    -e BC250_SLICES_PER_FRAME=2 -e BC250_H264_BACKEND=${BC250_H264_BACKEND:-x264} \
     wivrn-alyx:bc250 /opt/setup-vnc/start-vnc.sh >/dev/null
   ok "VNC setup container started"
 fi
@@ -213,7 +213,7 @@ sudo podman run -d --rm --name "$CONTAINER" \
   -v wivrn-alyx-wivrn:/home/retro/.config/wivrn:Z \
   -e GAMESCOPE_BACKEND=headless \
   -e LIBVA_DRIVER_NAME=bc250 -e BC250_FAST_MODE=1 \
-  -e BC250_SLICES_PER_FRAME=2 -e BC250_H264_BACKEND=x264 \
+  -e BC250_SLICES_PER_FRAME=2 -e BC250_H264_BACKEND=${BC250_H264_BACKEND:-x264} \
   -e OMP_WAIT_POLICY=PASSIVE -e GOMP_SPINCOUNT=0 \
   wivrn-alyx:bc250 >/dev/null
 ok "WiVRn container started"

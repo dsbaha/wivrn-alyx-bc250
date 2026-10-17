@@ -58,5 +58,5 @@ exec sudo podman run --rm -it \
   -e LIBVA_DRIVER_NAME=bc250 \
   -e BC250_FAST_MODE=1 \
   -e BC250_SLICES_PER_FRAME=2 \
-  -e BC250_H264_BACKEND=x264 \
+  -e BC250_H264_BACKEND=${BC250_H264_BACKEND:-x264} \
   wivrn-alyx:bc250 /opt/setup-vnc/start-vnc.sh

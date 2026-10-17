@@ -33,7 +33,7 @@ Environment=GAMESCOPE_BACKEND=headless
 Environment=LIBVA_DRIVER_NAME=bc250
 Environment=BC250_FAST_MODE=1
 Environment=BC250_SLICES_PER_FRAME=2
-Environment=BC250_H264_BACKEND=x264
+Environment=BC250_H264_BACKEND=x264  # change to compute for GPU encode, see README
 Environment=OMP_WAIT_POLICY=PASSIVE
 Environment=GOMP_SPINCOUNT=0
 
