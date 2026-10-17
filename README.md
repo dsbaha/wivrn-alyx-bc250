@@ -37,32 +37,38 @@ displays it with TimeWarp, and sends head / controller tracking back.
 - 5 GHz Wi-Fi, PC wired if possible
 - `sudo podman` — rootless Podman struggles with `/dev/uinput` + Avahi mDNS
 
-## Quick start
+## Quick start — guided (recommended)
+
+One command, walks you through everything, picks up where you left off:
 
 ```bash
 git clone https://github.com/dsbaha/wivrn-alyx-bc250.git
 cd wivrn-alyx-bc250
+./setup-wizard.sh
+```
 
-# 1. Build (multi-stage: build tools do NOT end up in the final image)
+It does preflight (podman, image, bc250 driver), VNC setup (Steam login +
+Alyx install, visually), waits for the download, auto-sets Proton +
+Launch Options, stops VNC, starts the WiVRn play container, guides Quest
+connect (Manual IP + 9757 if mDNS doesn't show), and launches Alyx.
+If you're already mid-download in VNC, it resumes there — it won't restart
+your download.
+
+## Quick start — manual (if you prefer the individual scripts)
+
+```bash
+# 1. Build
 podman build -f Containerfile -t wivrn-alyx:bc250 .
 
-# 2. Verify the BC-250 driver loads BEFORE you ever launch Alyx.
-# If vainfo doesn't list BC-250, stop — WiVRn will fall back to software.
+# 2. Verify BC-250 driver
 podman run --rm --device /dev/dri:/dev/dri \
   -e LIBVA_DRIVER_NAME=bc250 \
   wivrn-alyx:bc250 vainfo --display drm --device /dev/dri/renderD128
 
 # 3. ONE-TIME SETUP VIA VNC GUI (do this, not the CLI scripts below).
-#    Steam is GUI-first — login, install, Proton, Launch Options are all
-#    designed to be clicked. Headless CLI hacks fail silently with no
-#    screen to show you the prompt / error.
 ./setup-vnc.sh
 # Browser -> http://<CoreOS-IP>:6080/vnc.html -> click Connect
-#   (or VNC client -> <CoreOS-IP>:5900, no password, LAN only)
-# In Steam: log in (password + email Guard code), install Alyx,
-#   right-click Alyx -> Properties -> Compatibility -> Force GE-Proton 9-27,
-#   Properties -> General -> Launch Options:
-#     VR_OVERRIDE=/run/host/usr/lib64/xrizer/runtime %command%
+# In Steam: log in, install Alyx, set Proton + Launch Options (see wizard)
 # Then: ./stop-setup-vnc.sh
 
 # 4. Play
@@ -283,6 +289,7 @@ Wi-Fi has bandwidth headroom; latency is the bottleneck, so H.264 wins here.
 - `Containerfile` — multi-stage: builder compiles bc250 driver, final stage
   copies only driver + shaders onto GoW `wivrn:edge`, plus VNC setup packages.
 - `wivrn-config.json` — WiVRn VA-API, H.264, 50 Mbps.
+- `setup-wizard.sh` — GUIDED setup: one command, all steps, resume-aware (recommended).
 - `run.sh` — Podman run for Alyx (WiVRn play container).
 - `setup-vnc.sh` / `stop-setup-vnc.sh` — one-time Steam GUI via VNC/browser
   (PRIMARY setup path). Same image + same volumes, Xvnc + openbox + Steam.
