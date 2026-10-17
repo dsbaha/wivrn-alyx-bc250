@@ -14,12 +14,43 @@ set -euo pipefail
 CONTAINER="${CONTAINER:-wivrn-alyx}"
 STEAM_HOME="/home/retro/.local/share/Steam"
 
+# Detect the xrizer path that ACTUALLY exists in the container.
+# Hardcoding VR_OVERRIDE=/run/host/usr/lib64/xrizer/runtime broke Alyx with
+# "please verify SteamVR is properly installed" — that path does NOT exist
+# in the GoW image. xrizer lives at /opt/xrizer (GoW default, wivrn-session.sh
+# sets it globally), and the GoW docs' played-in-game path is
+# /home/retro/xrizer-hla/xrizer. Prefer the one that exists.
+# If none exists, set LaunchOptions to just %command% and rely on the
+# global VR_OVERRIDE from wivrn-session.sh (do NOT set a bogus path).
+detect_xrizer() {
+  local c="$1" p
+  for p in "/opt/xrizer" "/home/retro/xrizer-hla/xrizer" "/run/host/usr/lib64/xrizer/runtime" "/usr/lib64/xrizer/runtime"; do
+    if sudo podman exec "$c" test -e "$p" 2>/dev/null || sudo podman exec "$c" test -e "$p/bin/linux64/vrclient.so" 2>/dev/null; then
+      echo "$p"
+      return 0
+    fi
+  done
+  echo ""
+  return 1
+}
+XRIZER_PATH="$(detect_xrizer "$CONTAINER" || true)"
+if [[ -n "$XRIZER_PATH" ]]; then
+  LAUNCH="VR_OVERRIDE=$XRIZER_PATH %command%"
+  echo "Detected xrizer at: $XRIZER_PATH"
+  echo "LaunchOptions -> $LAUNCH"
+else
+  LAUNCH="%command%"
+  echo "WARNING: no xrizer path found in container — NOT setting VR_OVERRIDE per-game."
+  echo "Relying on global VR_OVERRIDE from wivrn-session.sh. LaunchOptions -> %command%"
+fi
+export LAUNCH
+
 # Find the userdata dir (your Steam user id)
 USER_ID=$(podman exec "$CONTAINER" bash -c "ls $STEAM_HOME/userdata | head -n 1")
 echo "Steam userdata id: $USER_ID"
 
-podman exec "$CONTAINER" python3 - <<'PYEOF'
-import re, pathlib
+podman exec -e LAUNCH="$LAUNCH" "$CONTAINER" python3 - <<'PYEOF'
+import os, re, pathlib
 
 steam = pathlib.Path("/home/retro/.local/share/Steam")
 config_vdf = steam / "config" / "config.vdf"
@@ -50,9 +81,9 @@ else:
 config_vdf.write_text(text)
 print("Wrote CompatToolMapping for 546560 -> GE-Proton9-27")
 
-# --- localconfig.vdf: LaunchOptions for Alyx -> xrizer ---
+# --- localconfig.vdf: LaunchOptions for Alyx -> xrizer (detected path) ---
 text2 = localconfig_vdf.read_text()
-launch = 'VR_OVERRIDE=/run/host/usr/lib64/xrizer/runtime %command%'
+launch = os.environ.get("LAUNCH", "%command%")
 alyx_launch = f'"546560"\n\t\t\t{{\n\t\t\t\t"LaunchOptions"\t\t"{launch}"\n\t\t\t}}'
 if '"546560"' in text2:
     # If Alyx already has a block, replace/insert LaunchOptions inside it

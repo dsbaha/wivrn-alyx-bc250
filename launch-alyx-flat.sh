@@ -35,20 +35,33 @@ sudo podman ps --filter name="$CONTAINER" --format '{{.Names}} {{.Status}}' || t
 
 echo ""
 echo "Backing up current LaunchOptions, then setting flat mode (KEEP VR_OVERRIDE)..."
-echo "  LaunchOptions -> VR_OVERRIDE=... %command% -novr +vr_enable_fake_vr 1"
+echo "  LaunchOptions -> VR_OVERRIDE=<detected-xrizer> %command% -novr +vr_enable_fake_vr 1"
+echo "  (xrizer path detected inside container — see Python output below)"
 # Reuse setup-steam.sh logic but with flat LaunchOptions: edit localconfig.vdf directly.
 # KEEP VR_OVERRIDE (so OpenVR -> xrizer works), APPEND -novr + fake VR after %command%.
+# Detect xrizer INSIDE the container (Python checks filesystem) — avoids
+# passing env through podman exec + gosu env (which drops it).
 sudo podman exec "$CONTAINER" gosu retro env HOME=/home/retro bash -c '
   set -e
   for f in /home/retro/.local/share/Steam/userdata/*/config/localconfig.vdf; do
     echo "Editing $f"
     cp "$f" "$f.bak-flat-test"
     python3 - "$f" <<PYEOF
-import re, sys
+import os, re, sys
 p = sys.argv[1]
 text = open(p).read()
-# Desired: VR_OVERRIDE=/run/host/usr/lib64/xrizer/runtime %command% -novr +vr_enable_fake_vr 1
-flat = "VR_OVERRIDE=/run/host/usr/lib64/xrizer/runtime %command% -novr +vr_enable_fake_vr 1"
+# Detect xrizer path that actually exists (same order as setup-steam.sh).
+xrizer = ""
+for cand in ["/opt/xrizer", "/home/retro/xrizer-hla/xrizer", "/run/host/usr/lib64/xrizer/runtime", "/usr/lib64/xrizer/runtime"]:
+    if os.path.exists(cand) or os.path.exists(cand + "/bin/linux64/vrclient.so"):
+        xrizer = cand
+        break
+if xrizer:
+    flat = f"VR_OVERRIDE={xrizer} %command% -novr +vr_enable_fake_vr 1"
+else:
+    flat = "%command% -novr +vr_enable_fake_vr 1"
+print(f"  detected xrizer: {xrizer or \"(none, relying on global)\"}")
+print(f"  set 546560 LaunchOptions -> {flat}")
 # Match: "546560" { ... "LaunchOptions" "old" ... } — replace old value.
 pat = re.compile(r"(\"546560\"\s*\{[^}]*?\"LaunchOptions\"\s*\")[^\"]*(\")", re.DOTALL)
 if pat.search(text):
