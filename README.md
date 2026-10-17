@@ -24,7 +24,7 @@ displays it with TimeWarp, and sends head / controller tracking back.
   even in offline mode. There is no supported Steamless Alyx.
 - **Image size (checked 2026-10-16):** Base pull ~697 MB / ~2 GB unpacked.
   This overlay adds ~20–50 MB (driver + shaders). Alyx itself is separate,
-  ~67 GB in `./steam-data`, not in the image.
+  ~67 GB in the `wivrn-alyx-steam` named volume, not in the image.
 
 ## Prerequisites
 
@@ -64,10 +64,14 @@ podman run --rm --device /dev/dri:/dev/dri \
 `--shm-size` — Podman rejects that combo; with `--ipc host` the container
 uses the host's `/dev/shm` directly, so check `df -h /dev/shm` on the host),
 devices `/dev/dri`, `/dev/input`, `/dev/uinput`, the caps WiVRn needs,
-and persistent volumes `./steam-data` + `./wivrn-data`.
+and named Podman volumes `wivrn-alyx-steam` + `wivrn-alyx-wivrn`
+(Fedora CoreOS — no bind mounts to a filesystem path).
 
-For systemd / boot, copy `wivrn-alyx.container` to `~/.config/containers/systemd/`
-and `systemctl --user daemon-reload`. Same flags, Quadlet form.
+For systemd / boot, copy `wivrn-alyx.container` +
+`wivrn-alyx-steam.volume` + `wivrn-alyx-wivrn.volume` to
+`~/.config/containers/systemd/` and `systemctl --user daemon-reload`.
+Same flags, Quadlet form. Inspect volumes with
+`sudo podman volume inspect wivrn-alyx-steam`.
 
 ## Steam setup — no GUI needed
 
@@ -76,8 +80,8 @@ and `systemctl --user daemon-reload`. Same flags, Quadlet form.
 Steam Guard is Valve's 2FA. The container looks like a brand-new device, so
 the first login asks for a one-time code from email or the Steam Mobile App
 (Steam Guard → 5-character code, refreshes every 30s). After that one login,
-it caches a sentry file (`ssfn*`) + auth token in `./steam-data`, and later
-runs skip the prompt as long as you keep that volume.
+it caches a sentry file (`ssfn*`) + auth token in the `wivrn-alyx-steam`
+named volume, and later runs skip the prompt as long as you keep that volume.
 
 One-time login:
 
@@ -87,7 +91,7 @@ podman exec -it wivrn-alyx steamcmd +login <user> <pass> <GuardCode> +quit
 # podman exec -it wivrn-alyx steamcmd +set_steam_guard_code <GuardCode>
 ```
 
-Treat `./steam-data` as sensitive — it holds auth tokens. It is gitignored.
+Treat the `wivrn-alyx-steam` volume as sensitive — it holds auth tokens.
 
 ### Alyx Proton + launch options
 
@@ -148,6 +152,8 @@ Wi-Fi has bandwidth headroom; latency is the bottleneck, so H.264 wins here.
 - `run.sh` — Podman run for Alyx.
 - `setup-steam.sh` — one-time Alyx Proton + launch-option edits, no GUI.
 - `wivrn-alyx.container` — Quadlet / systemd version of `run.sh`.
+- `wivrn-alyx-steam.volume` / `wivrn-alyx-wivrn.volume` — named-volume
+  definitions for Quadlet (Fedora CoreOS, no bind mounts).
 
 ## Other games
 

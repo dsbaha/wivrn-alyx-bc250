@@ -19,8 +19,10 @@ SecurityLabelDisable=true
 SeccompProfile=unconfined
 DeviceCgroupRule=c 13:* rwm
 DeviceCgroupRule=c 244:* rwm
-Volume=%h/wivrn-alyx-bc250/steam-data:/home/retro/.local/share/Steam:Z
-Volume=%h/wivrn-alyx-bc250/wivrn-data:/home/retro/.config/wivrn:Z
+# Named Podman volumes (see wivrn-alyx-steam.volume / wivrn-alyx-wivrn.volume).
+# Fedora CoreOS: no bind mounts to a filesystem path for game data.
+Volume=wivrn-alyx-steam.volume:/home/retro/.local/share/Steam:Z
+Volume=wivrn-alyx-wivrn.volume:/home/retro/.config/wivrn:Z
 Environment=LIBVA_DRIVER_NAME=bc250
 Environment=BC250_FAST_MODE=1
 Environment=BC250_SLICES_PER_FRAME=2

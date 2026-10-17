@@ -1,0 +1,7 @@
+[Unit]
+Description=WiVRn config for wivrn-alyx
+After=network-online.target
+
+[Volume]
+Label=app=wivrn-alyx
+Label=data=wivrn-config

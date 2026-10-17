@@ -54,9 +54,14 @@ COPY --from=builder /tmp/bc250-install/usr/share/bc250/shaders /usr/share/bc250/
 # WiVRn config — VA-API, H.264
 # 2HW + 1SW topology: left/right eye via HW VA-API, alpha/foveation via SW.
 # See docs/wivrn-guide.md in the bc250 repo for the preset this mirrors.
+# NOTE: Only copy to /etc/wivrn/config.json (system fallback). Do NOT copy to
+# /home/retro/... and do NOT USER/chown retro here — the base image has NO
+# retro user at build time. Its entrypoint (/opt/gow/entrypoint.sh) creates
+# the retro user at RUNTIME from PUID/PGID via gosu, and /home/retro does
+# not exist during `podman build`. USER retro / chown retro:retro fails the
+# build with "unable to find user retro". Keep the build as root; the
+# entrypoint drops to retro at runtime.
 COPY wivrn-config.json /etc/wivrn/config.json
-COPY wivrn-config.json /home/retro/.config/wivrn/config.json
-RUN chown retro:retro /home/retro/.config/wivrn/config.json || true
 
 # BC-250 WiVRn env — from bc250 docs/wivrn-guide.md
 # SLICES=2 for VR (not 4) to avoid thread over-subscription across 2 encoders.
@@ -73,5 +78,6 @@ ENV OMP_WAIT_POLICY=PASSIVE
 ENV GOMP_SPINCOUNT=0
 ENV OMP_NUM_THREADS=2
 
-USER retro
-# Inherit CMD from base — gamescope + Steam + WiVRn startup
+# No USER directive here — inherit the base (root). The base entrypoint
+# creates the retro user and drops to it at runtime. Do not add USER retro.
+# Inherit ENTRYPOINT/CMD from base — gamescope + Steam + WiVRn startup

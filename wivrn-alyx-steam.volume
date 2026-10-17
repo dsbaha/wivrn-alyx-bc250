@@ -1,0 +1,7 @@
+[Unit]
+Description=Steam data for wivrn-alyx (Alyx, ~67 GB)
+After=network-online.target
+
+[Volume]
+Label=app=wivrn-alyx
+Label=data=steam

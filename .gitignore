@@ -1,3 +1,4 @@
-steam-data/
-wivrn-data/
+# Game + Steam data lives in named Podman volumes
+# (wivrn-alyx-steam, wivrn-alyx-wivrn), not in this repo.
+# No bind-mount dirs to ignore anymore.
 *.mp4

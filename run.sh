@@ -1,7 +1,14 @@
 #!/usr/bin/env bash
-# Run wivrn-alyx:bc250 with Podman (rootful).
+# Run wivrn-alyx:bc250 with Podman (rootful) on Fedora CoreOS.
 # Rootful is required for /dev/uinput + host networking + Avahi mDNS.
-# Steam data + WiVRn config persist in ./steam-data and ./wivrn-data.
+# Steam data + WiVRn config persist in NAMED Podman volumes, not bind
+# mounts to a filesystem path — this is Fedora CoreOS, so we don't
+# assume a writable working directory for game data. Volumes live in
+# /var/lib/containers/storage/volumes/ and survive CoreOS updates.
+#   wivrn-alyx-steam -> /home/retro/.local/share/Steam  (Alyx, ~67 GB)
+#   wivrn-alyx-wivrn -> /home/retro/.config/wivrn   (WiVRn config)
+# Inspect:  sudo podman volume inspect wivrn-alyx-steam
+# Back up:  sudo podman volume export wivrn-alyx-steam > steam-backup.tar
 # NOTE: No --shm-size here — Podman rejects it with --ipc host:
 # "cannot set shmsize when running in the host ipc namespace".
 # With --ipc host the container uses the host's /dev/shm directly,
@@ -11,8 +18,9 @@
 # treats that combination as invalid — Docker tolerates it, Podman does not.
 set -euo pipefail
 
-cd "$(dirname "$0")"
-mkdir -p ./steam-data ./wivrn-data
+# Create named volumes if they don't exist (idempotent)
+sudo podman volume exists wivrn-alyx-steam || sudo podman volume create wivrn-alyx-steam
+sudo podman volume exists wivrn-alyx-wivrn || sudo podman volume create wivrn-alyx-wivrn
 
 exec sudo podman run --rm -it \
   --name wivrn-alyx \
@@ -26,8 +34,8 @@ exec sudo podman run --rm -it \
   --security-opt label=disable \
   --device-cgroup-rule 'c 13:* rwm' \
   --device-cgroup-rule 'c 244:* rwm' \
-  -v "$PWD/steam-data:/home/retro/.local/share/Steam:Z" \
-  -v "$PWD/wivrn-data:/home/retro/.config/wivrn:Z" \
+  -v wivrn-alyx-steam:/home/retro/.local/share/Steam:Z \
+  -v wivrn-alyx-wivrn:/home/retro/.config/wivrn:Z \
   -e LIBVA_DRIVER_NAME=bc250 \
   -e BC250_FAST_MODE=1 \
   -e BC250_SLICES_PER_FRAME=2 \
