@@ -1,0 +1,34 @@
+[Unit]
+Description=Half-Life: Alyx via WiVRn on BC-250 (Podman)
+After=network-online.target
+Wants=network-online.target
+
+[Container]
+Image=wivrn-alyx:bc250
+ContainerName=wivrn-alyx
+Network=host
+Ipc=host
+ShmSize=8g
+Device=/dev/dri:/dev/dri
+Device=/dev/input:/dev/input
+Device=/dev/uinput:/dev/uinput
+AddCapability=SYS_ADMIN,SYS_NICE,SYS_PTRACE,NET_RAW,MKNOD,NET_ADMIN
+SecurityLabelDisable=true
+SeccompProfile=unconfined
+DeviceCgroupRule=c 13:* rwm
+DeviceCgroupRule=c 244:* rwm
+Volume=%h/wivrn-alyx-bc250/steam-data:/home/retro/.local/share/Steam:Z
+Volume=%h/wivrn-alyx-bc250/wivrn-data:/home/retro/.config/wivrn:Z
+Environment=LIBVA_DRIVER_NAME=bc250
+Environment=BC250_FAST_MODE=1
+Environment=BC250_SLICES_PER_FRAME=2
+Environment=BC250_H264_BACKEND=x264
+Environment=OMP_WAIT_POLICY=PASSIVE
+Environment=GOMP_SPINCOUNT=0
+
+[Service]
+Restart=on-failure
+TimeoutStartSec=0
+
+[Install]
+WantedBy=default.target
