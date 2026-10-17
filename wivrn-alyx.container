@@ -8,7 +8,9 @@ Image=wivrn-alyx:bc250
 ContainerName=wivrn-alyx
 Network=host
 Ipc=host
-ShmSize=8g
+# No ShmSize= here — Podman rejects ShmSize with Ipc=host
+# ("cannot set shmsize when running in the host ipc namespace").
+# With Ipc=host the container uses the host's /dev/shm directly.
 Device=/dev/dri:/dev/dri
 Device=/dev/input:/dev/input
 Device=/dev/uinput:/dev/uinput

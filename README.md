@@ -60,7 +60,9 @@ podman run --rm --device /dev/dri:/dev/dri \
 ./run.sh
 ```
 
-`run.sh` is `sudo podman run` with `--network host --ipc host --shm-size 8g`,
+`run.sh` is `sudo podman run` with `--network host --ipc host` (no
+`--shm-size` — Podman rejects that combo; with `--ipc host` the container
+uses the host's `/dev/shm` directly, so check `df -h /dev/shm` on the host),
 devices `/dev/dri`, `/dev/input`, `/dev/uinput`, the caps WiVRn needs,
 and persistent volumes `./steam-data` + `./wivrn-data`.
 

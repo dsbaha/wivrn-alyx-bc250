@@ -2,6 +2,13 @@
 # Run wivrn-alyx:bc250 with Podman (rootful).
 # Rootful is required for /dev/uinput + host networking + Avahi mDNS.
 # Steam data + WiVRn config persist in ./steam-data and ./wivrn-data.
+# NOTE: No --shm-size here — Podman rejects it with --ipc host:
+# "cannot set shmsize when running in the host ipc namespace".
+# With --ipc host the container uses the host's /dev/shm directly,
+# so make sure the host's /dev/shm is big enough (check `df -h /dev/shm`;
+# if it's small: `sudo mount -o remount,size=8G /dev/shm`).
+# GoW's Docker config lists both IpcMode:host + ShmSize:8g, but Podman
+# treats that combination as invalid — Docker tolerates it, Podman does not.
 set -euo pipefail
 
 cd "$(dirname "$0")"
@@ -11,7 +18,6 @@ exec sudo podman run --rm -it \
   --name wivrn-alyx \
   --network host \
   --ipc host \
-  --shm-size 8g \
   --device /dev/dri:/dev/dri \
   --device /dev/input:/dev/input \
   --device /dev/uinput:/dev/uinput \
