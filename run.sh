@@ -63,6 +63,7 @@ exec sudo podman run --rm -it \
   -v wivrn-alyx-steam:/home/retro/.local/share/Steam:Z \
   -v wivrn-alyx-wivrn:/home/retro/.config/wivrn:Z \
   -e GAMESCOPE_BACKEND=headless \
+  -e RADV_DEBUG=${RADV_DEBUG:-nohiz} \
   -e LIBVA_DRIVER_NAME=bc250 \
   -e BC250_FAST_MODE=1 \
   -e BC250_SLICES_PER_FRAME=2 \
