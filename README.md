@@ -86,15 +86,29 @@ the first login asks for a one-time code from email or the Steam Mobile App
 it caches a sentry file (`ssfn*`) + auth token in the `wivrn-alyx-steam`
 named volume, and later runs skip the prompt as long as you keep that volume.
 
-One-time login:
+One-time login via the Steam client already in the container
+(`steamcmd` is NOT installed in this image — the GoW image installs the
+`steam` package from RPM Fusion, not `steamcmd`, so `steamcmd` is not in
+PATH and that's expected):
 
 ```bash
-podman exec -it wivrn-alyx steamcmd +login <user> <pass> <GuardCode> +quit
-# or if it already prompted:
-# podman exec -it wivrn-alyx steamcmd +set_steam_guard_code <GuardCode>
+podman exec -it wivrn-alyx steam -login <user> <pass> <GuardCode>
 ```
 
-Treat the `wivrn-alyx-steam` volume as sensitive — it holds auth tokens.
+Or copy your already-logged-in host Steam files into the volume (see
+`setup-steam.sh` header / earlier notes: `config.vdf`, `loginusers.vdf`,
+`ssfn*`, `userdata/`). Treat the `wivrn-alyx-steam` volume as sensitive —
+it holds auth tokens.
+
+### Install Alyx
+
+```bash
+./install-alyx.sh
+```
+
+That uses `steam steam://install/546560` (NOT steamcmd — steamcmd would
+install to a different Steam root `~/Steam` and the Steam client + WiVRn
+would not see it). It polls for `appmanifest_546560.acf`.
 
 ### Alyx Proton + launch options
 
@@ -159,7 +173,7 @@ use, does the Steam VR manifest exist, is Alyx installed
 If Alyx is NOT installed, install it first, then reconnect:
 
 ```bash
-podman exec -it wivrn-alyx steamcmd +login <user> <pass> +app_update 546560 validate +quit
+./install-alyx.sh
 # then run ./setup-steam.sh (Proton + VR_OVERRIDE) if you haven't yet
 # then restart the container and reconnect from the Quest
 ```
@@ -225,6 +239,7 @@ Wi-Fi has bandwidth headroom; latency is the bottleneck, so H.264 wins here.
   copies only driver + shaders onto GoW `wivrn:edge`.
 - `wivrn-config.json` — WiVRn VA-API, H.264, 50 Mbps.
 - `run.sh` — Podman run for Alyx.
+- `install-alyx.sh` — install Alyx via Steam client (NOT steamcmd).
 - `launch-alyx.sh` — launch Alyx after Quest connects ("waiting for app").
 - `check-apps.sh` — diagnose empty "pick an application" picker.
 - `check-network.sh` — diagnose server not showing on local network.
@@ -244,6 +259,9 @@ Wi-Fi has bandwidth headroom; latency is the bottleneck, so H.264 wins here.
 
 ## Troubleshooting
 
+- `steamcmd not found` / `steamcmd: command not found` → expected.
+  This image installs the `steam` client, NOT `steamcmd`. Use
+  `./install-alyx.sh` (Steam client) and `steam -login`, not `steamcmd`.
 - "Waiting for an application to start" → no game launched yet. Run
   `./launch-alyx.sh` from the CoreOS box while the headset is connected.
 - Server not showing on local network → run `./check-network.sh`.

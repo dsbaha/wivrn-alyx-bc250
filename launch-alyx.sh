@@ -21,7 +21,7 @@ sudo podman ps --filter name="$CONTAINER" --format '{{.Names}} {{.Status}}' || t
 echo "Checking Alyx is installed (appmanifest_546560.acf)..."
 if ! sudo podman exec "$CONTAINER" test -f ~/.local/share/Steam/steamapps/appmanifest_546560.acf; then
   echo "ERROR: Alyx NOT installed. Install first:"
-  echo "  podman exec -it $CONTAINER steamcmd +login <user> <pass> +app_update 546560 validate +quit"
+  echo "  ./install-alyx.sh"
   echo "  ./setup-steam.sh"
   exit 1
 fi
