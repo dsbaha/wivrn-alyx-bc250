@@ -28,7 +28,10 @@ displays it with TimeWarp, and sends head / controller tracking back.
 
 ## Prerequisites
 
-- AMD BC-250 machine, Podman (rootful for `/dev/uinput` + host networking)
+- AMD BC-250 machine, headless Fedora CoreOS, Podman (rootful for
+  `/dev/uinput` + host networking). No host X server required — gamescope
+  provides the virtual display *inside* the container, and `--ipc host`
+  is for shared memory / Monado IPC, not for X.
 - Meta Quest 3 + WiVRn client app (Meta Horizon Store, search "WiVRn")
 - Steam account that owns Half-Life: Alyx
 - 5 GHz Wi-Fi, PC wired if possible
