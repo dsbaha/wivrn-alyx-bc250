@@ -64,6 +64,7 @@ exec sudo podman run --rm -it \
   -v wivrn-alyx-wivrn:/home/retro/.config/wivrn:Z \
   -e GAMESCOPE_BACKEND=headless \
   -e RADV_DEBUG=${RADV_DEBUG:-nohiz} \
+  -e VR_OVERRIDE=${VR_OVERRIDE:-/opt/xrizer} \
   -e LIBVA_DRIVER_NAME=bc250 \
   -e BC250_FAST_MODE=1 \
   -e BC250_SLICES_PER_FRAME=${BC250_SLICES_PER_FRAME:-2} \
