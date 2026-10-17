@@ -101,6 +101,26 @@ PYEOF
   echo "--- after ---"
   cat "$VT"
   echo ""
+  echo "--- syncing Low to Steam Cloud copies (persistence fix) ---"
+  echo "Steam Cloud holds its own video.txt in userdata/*/546560/remote/cfg/."
+  echo "If Cloud has Medium/High, it OVERWRITES the game-dir file on launch,"
+  echo "so Low never persists. Copy the Low file to ALL Cloud copies."
+  for cloud in /home/retro/.local/share/Steam/userdata/*/546560/remote/cfg/video.txt; do
+    if [ -f "$cloud" ]; then
+      cp "$cloud" "$cloud.bak"
+      cp "$VT" "$cloud"
+      echo "  synced Low -> $cloud (backed up to .bak)"
+    fi
+  done
+  for d in /home/retro/.local/share/Steam/userdata/*/546560/remote/cfg/; do
+    if [ -d "$d" ] && [ ! -f "$d/video.txt" ]; then
+      cp "$VT" "$d/video.txt"
+      echo "  created Low Cloud copy -> $d/video.txt"
+    fi
+  done
+  echo "  (Also: in VNC, Alyx -> Properties -> General -> Steam Cloud OFF"
+  echo "   prevents Cloud from ever reverting this again.)"
+  echo ""
   echo "Also writing autoexec.cfg (Low cvars, harmless if a cvar does not exist):"
   cat > "$GAME_CFG/autoexec.cfg" <<EOF
 // Alyx Low — set by set-alyx-low.sh (BC-250, GPU hang workaround)
