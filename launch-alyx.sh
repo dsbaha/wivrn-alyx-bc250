@@ -29,11 +29,14 @@ echo "Alyx installed."
 
 echo "Launching Alyx via Steam (steam://launch/546560/VR)..."
 echo "Must run as RETRO, not root: podman exec defaults to root (HOME=/root),"
-echo "so a bare 'steam steam://...' as root looks for Steam in /root, misses"
-echo "the retro Steam running in gamescope, and starts a second (broken) Steam"
-echo "instead of IPC-ing to the real one. Use gosu retro + HOME=/home/retro."
-sudo podman exec "$CONTAINER" gosu retro env HOME=/home/retro XDG_RUNTIME_DIR=/run/user/1000 bash -c 'steam "steam://launch/546560/VR" >/tmp/alyx-launch.log 2>&1 & echo "launch command sent, pid $!"'
-echo "Log inside container: /tmp/alyx-launch.log (as retro)"
+echo "so a bare 'steam steam://...' as root hits Steam's 'cannot run as root user'"
+echo "check and never reaches the retro Steam in gamescope. Use gosu retro."
+echo "Also: old runs left a ROOT-owned /tmp/alyx-launch.log in sticky /tmp, which"
+echo "retro cannot overwrite — remove it first, and log to retro's HOME instead."
+sudo podman exec "$CONTAINER" rm -f /tmp/alyx-launch.log
+sudo podman exec "$CONTAINER" gosu retro env HOME=/home/retro XDG_RUNTIME_DIR=/run/user/1000 bash -c 'steam "steam://launch/546560/VR" >/home/retro/alyx-launch.log 2>&1 & echo "launch command sent, pid $!"'
+echo "Log inside container: /home/retro/alyx-launch.log (as retro)"
+echo "View it: sudo podman exec $CONTAINER cat /home/retro/alyx-launch.log"
 
 echo ""
 echo "Watch the launch:"
