@@ -337,8 +337,10 @@ Wi-Fi has bandwidth headroom; latency is the bottleneck, so H.264 wins here.
   Containerfile patches `gamescope-lib.sh` to use
   `GAMESCOPE_BACKEND` (default `headless`), and `run.sh` / Quadlet set
   `GAMESCOPE_BACKEND=headless`. Pull latest and rebuild.
-- `vainfo` doesn't list BC-250 → check `/dev/dri/renderD128` exists,
-  user is in `video` + `render` groups, `LIBVA_DRIVER_NAME=bc250`.
+- `vainfo` doesn't show `AMD BC-250 RDNA2` (case-insensitive) → check
+  `/dev/dri/renderD128` exists, user is in `video` + `render` groups,
+  `LIBVA_DRIVER_NAME=bc250`. The driver string is `AMD BC-250 RDNA2`,
+  not `bc250` — grep `-i` for that exact string.
 - Game starts on virtual screen, no HMD image / tracking → it fell back to
   desktop mode. Check startup logs for the `VR_OVERRIDE=...` line.
 - `IVRSystem_026` error → wrong Proton / OpenComposite combo. Use

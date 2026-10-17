@@ -68,12 +68,15 @@ else
 fi
 
 echo "Checking BC-250 driver (vainfo)..."
+echo "vainfo reports the driver as 'AMD BC-250 RDNA2' (case varies) — grep -i for that string."
 if sudo podman run --rm --device /dev/dri:/dev/dri -e LIBVA_DRIVER_NAME=bc250 \
-    wivrn-alyx:bc250 vainfo --display drm --device /dev/dri/renderD128 2>&1 | grep -q "bc250"; then
-  ok "bc250 VA-API driver loads"
+    wivrn-alyx:bc250 vainfo --display drm --device /dev/dri/renderD128 2>&1 | grep -qi "AMD BC-250 RDNA2"; then
+  ok "bc250 VA-API driver loads (vainfo shows AMD BC-250 RDNA2)"
 else
-  err "vainfo does NOT list bc250 — WiVRn would fall back to software. Stop here."
+  err "vainfo does NOT show 'AMD BC-250 RDNA2' — WiVRn would fall back to software. Stop here."
   echo "Check: /dev/dri/renderD128 exists, LIBVA_DRIVER_NAME=bc250"
+  echo "Run manually to see full vainfo output:"
+  echo "  sudo podman run --rm --device /dev/dri:/dev/dri -e LIBVA_DRIVER_NAME=bc250 wivrn-alyx:bc250 vainfo --display drm --device /dev/dri/renderD128"
   exit 1
 fi
 
