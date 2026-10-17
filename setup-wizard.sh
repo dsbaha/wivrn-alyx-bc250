@@ -32,8 +32,23 @@ ask_yes() { # ask_yes "question" -> returns 0 if yes
 CONTAINER="wivrn-alyx"
 SETUP_CONTAINER="wivrn-alyx-setup"
 STEAM_HOME="/home/retro/.local/share/Steam"
+# Fedora Steam can use either root — check BOTH, not just STEAM_HOME.
+STEAM_ROOTS="/home/retro/.local/share/Steam /home/retro/.steam/debian-installation /home/retro/.steam/steam"
 HOST_IP="$(hostname -I 2>/dev/null | awk '{print $1}')"
 HOST_IP="${HOST_IP:-<CoreOS-IP>}"
+
+# Find Alyx manifest in ANY Steam root. Prints the manifest path or empty.
+find_alyx_manifest() {
+  local c="$1" root m
+  for root in $STEAM_ROOTS; do
+    m="$root/steamapps/appmanifest_546560.acf"
+    if sudo podman exec "$c" test -f "$m" 2>/dev/null; then
+      echo "$m"
+      return 0
+    fi
+  done
+  return 1
+}
 
 # ---------------------------------------------------------------- Step 1
 step 1 "Preflight — podman, image, volumes, BC-250 driver"
@@ -108,20 +123,24 @@ pause
 step 3 "Waiting for Alyx download (~67 GB)"
 
 echo "Polling for Alyx manifest + download progress (Ctrl-C to stop — download keeps running)..."
+echo "Checks BOTH Steam roots (~/.local/share/Steam AND ~/.steam/debian-installation)."
 echo "Tip: you can leave this running and come back later; re-run ./setup-wizard.sh to resume."
 while true; do
-  if sudo podman exec "$SETUP_CONTAINER" test -f "$STEAM_HOME/steamapps/appmanifest_546560.acf" 2>/dev/null; then
+  MANIFEST="$(find_alyx_manifest "$SETUP_CONTAINER" || true)"
+  if [[ -n "$MANIFEST" ]]; then
     # Read StateFlags + Bytes from the manifest (best-effort, VDF is text)
-    INFO="$(sudo podman exec "$SETUP_CONTAINER" bash -c "grep -E 'StateFlags|BytesDownloaded|BytesToDownload|\"name\"' $STEAM_HOME/steamapps/appmanifest_546560.acf 2>/dev/null | tr -d '\t\"' | tr '\n' ' ' " || true)"
-    echo "  manifest: $INFO"
-    if sudo podman exec "$SETUP_CONTAINER" bash -c "grep -q '\"StateFlags\"[[:space:]]*\"4\"' $STEAM_HOME/steamapps/appmanifest_546560.acf" 2>/dev/null; then
-      ok "Alyx download COMPLETE (StateFlags 4)"
+    INFO="$(sudo podman exec "$SETUP_CONTAINER" bash -c "grep -E 'StateFlags|BytesDownloaded|BytesToDownload|\"name\"' '$MANIFEST' 2>/dev/null | tr -d '\t\"' | tr '\n' ' ' " || true)"
+    echo "  manifest: $MANIFEST"
+    echo "  $INFO"
+    if sudo podman exec "$SETUP_CONTAINER" bash -c "grep -q '\"StateFlags\"[[:space:]]*\"4\"' '$MANIFEST'" 2>/dev/null; then
+      ok "Alyx download COMPLETE (StateFlags 4) in $MANIFEST"
       break
     fi
     echo "  ... still downloading (or installing). Checking again in 30s."
   else
-    echo "  ... no Alyx manifest yet — is Alyx installing in the VNC Steam window?"
+    echo "  ... no Alyx manifest yet in either Steam root — is Alyx installing in VNC?"
     echo "      If not, go to Library -> Half-Life: Alyx -> Install in VNC, then come back."
+    echo "      If Steam shows Alyx as installed but no manifest is found, run ./find-alyx.sh"
   fi
   sleep 30
 done
@@ -193,6 +212,28 @@ echo "  - Disable hand tracking, wake the physical controllers BEFORE connecting
 echo "  - If the server shows via mDNS, tap it."
 echo "  - If NOT (mDNS is flaky here), use Manual / Add server:"
 echo -e "      IP: ${GREEN}${HOST_IP}${NC}   Port: ${GREEN}9757${NC}"
+echo ""
+echo "PAIRING PIN — first-time Quest connect needs this:"
+echo "WiVRn prints 'To pair a new headset use PIN code: XXXX' to the server"
+echo "logs + a desktop notification you never see headless. The wizard"
+echo "surfaces it here so you don't have to dig through podman logs."
+echo "Watching logs for the PIN (takes a few seconds after the headset tries to connect)..."
+# Poll logs for the PIN for up to 60s, print it big when found.
+PIN=""
+for _ in $(seq 1 30); do
+  PIN="$(sudo podman logs --tail 200 "$CONTAINER" 2>&1 | grep -oE 'To pair a new headset use PIN code: [0-9]+' | tail -n 1 | grep -oE '[0-9]+$' || true)"
+  if [[ -n "$PIN" ]]; then break; fi
+  sleep 2
+done
+if [[ -n "$PIN" ]]; then
+  echo ""
+  echo -e "  ${GREEN}>>> WiVRn pairing PIN: ${PIN} <<<${NC}"
+  echo "  Enter this PIN on the Quest when it asks to pair."
+  echo ""
+else
+  echo "  (No PIN in logs yet — it appears when the headset first tries to pair."
+  echo "   If the Quest asks for a PIN, get it with: sudo podman logs $CONTAINER | grep 'PIN code')"
+fi
 echo ""
 echo "Wait until the headset says 'waiting for an application to start', then come back here."
 pause

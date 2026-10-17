@@ -31,10 +31,13 @@ sudo podman exec "$CONTAINER" bash -c "
 "
 
 echo ""
-echo "=== Is Alyx installed? (AppID 546560) ==="
+echo "=== Is Alyx installed? (AppID 546560, BOTH Steam roots) ==="
 sudo podman exec "$CONTAINER" bash -c "
-  ls ~/.local/share/Steam/steamapps/common/ 2>/dev/null | grep -i alyx || echo 'No Alyx dir in steamapps/common/'
-  ls ~/.local/share/Steam/steamapps/appmanifest_546560.acf 2>/dev/null && echo 'Alyx manifest present' || echo 'No appmanifest_546560.acf — Alyx NOT installed'
+  for root in ~/.local/share/Steam ~/.steam/debian-installation ~/.steam/steam; do
+    echo \"-- \$root --\"
+    ls \$root/steamapps/common/ 2>/dev/null | grep -i alyx || echo '  no Alyx dir in steamapps/common/'
+    ls \$root/steamapps/appmanifest_546560.acf 2>/dev/null && echo '  Alyx manifest present' || echo '  no appmanifest_546560.acf'
+  done
 "
 
 echo ""
