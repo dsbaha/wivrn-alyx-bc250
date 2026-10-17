@@ -88,7 +88,9 @@ for k, v in low_keys.items():
     # Match: "key"  "oldvalue"  ->  "key"  "0"
     pat = re.compile(r"(\"" + re.escape(k) + r"\"\s*\")[^\"]*(\")")
     if pat.search(text):
-        text = pat.sub(r"\\1" + v + r"\\2", text)
+        # Use lambda, NOT r"\1" + v + r"\2": with v="0" that becomes "\10"
+        # which re.sub parses as group 10 -> "invalid group reference".
+        text = pat.sub(lambda m, v=v: m.group(1) + v + m.group(2), text)
         print(f"  set {k} -> {v}")
     else:
         print(f"  (not present, skipped) {k}")
