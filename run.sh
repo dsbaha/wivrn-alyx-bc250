@@ -72,6 +72,10 @@ exec sudo podman run --rm -it \
   -e WIVRN_ENCODER=${WIVRN_ENCODER:-auto} \
   -e WIVRN_CODEC=${WIVRN_CODEC:-} \
   -e WIVRN_TCP_ONLY=${WIVRN_TCP_ONLY:-false} \
+  -e WIVRN_BITRATE=${WIVRN_BITRATE:-20000000} \
+  -e WIVRN_X264_PRESET=${WIVRN_X264_PRESET:-ultrafast} \
+  -e WIVRN_X264_TUNE=${WIVRN_X264_TUNE:-zerolatency} \
+  -e WIVRN_X264_THREADS=${WIVRN_X264_THREADS:-8} \
   -e OMP_WAIT_POLICY=PASSIVE \
   -e GOMP_SPINCOUNT=0 \
   wivrn-alyx:bc250

@@ -86,9 +86,73 @@ sess.write_text(stext.replace(old2, new2, 1))
 print("Patched wivrn-session.sh: mkdir -p $XDG_RUNTIME_DIR")
 PY
 
-# Default to headless backend for Podman / CoreOS. Override to `wayland`
-# only if you run under Wolf (which provides a virtual compositor).
-ENV GAMESCOPE_BACKEND=headless
+# x264 tuning: GoW's wivrn-config.sh does NOT expose bitrate or x264
+# preset/tune/threads — it regenerates config.json on every start, so a
+# manual edit gets wiped. Patch it to support:
+#   WIVRN_BITRATE (e.g. 20000000 = 20 Mbps, empty = WiVRn default)
+#   WIVRN_X264_PRESET (ultrafast, superfast, veryfast, faster, fast, medium)
+#   WIVRN_X264_TUNE (zerolatency)
+#   WIVRN_X264_THREADS (e.g. 8)
+# Bitrate goes to top-level "bitrate". x264 opts go to encoder.options
+# (passed to avcodec_open2). Only applied when encoder is x264.
+RUN python3 - <<'PY'
+import pathlib
+cfg = pathlib.Path("/opt/gow/wivrn-config.sh")
+text = cfg.read_text()
+marker = 'log_info "Wrote WiVRn config to ${CONFIG_FILE}"'
+assert marker in text, "wivrn-config.sh no longer contains log_info line — check upstream"
+patch = marker + '''
+
+# --- BC-250 / Alyx overlay: x264 tuning + bitrate (appended by Containerfile) ---
+/usr/bin/python3 <<'PYEOF'
+import json, os
+config_file = os.environ.get("CONFIG_FILE", os.path.expanduser("~/.config/wivrn/config.json"))
+try:
+    with open(config_file) as f:
+        config = json.load(f)
+except FileNotFoundError:
+    config = {}
+changed = False
+bitrate_raw = os.environ.get("WIVRN_BITRATE", "").strip()
+if bitrate_raw:
+    try:
+        config["bitrate"] = int(bitrate_raw)
+        changed = True
+    except ValueError:
+        print(f"[WARN] wivrn-config: WIVRN_BITRATE must be int, got '{bitrate_raw}'", flush=True)
+enc = config.get("encoder", "auto")
+enc_name = enc if isinstance(enc, str) else enc.get("encoder", "auto")
+if enc_name == "x264":
+    opts = {"bf": "0"}
+    preset = os.environ.get("WIVRN_X264_PRESET", "").strip()
+    tune = os.environ.get("WIVRN_X264_TUNE", "").strip()
+    threads = os.environ.get("WIVRN_X264_THREADS", "").strip()
+    if preset:
+        opts["preset"] = preset
+    if tune:
+        opts["tune"] = tune
+    if threads:
+        opts["threads"] = threads
+    if isinstance(enc, str):
+        new_enc = {"encoder": "x264", "options": opts}
+        codec = os.environ.get("WIVRN_CODEC", "").strip().lower()
+        if codec:
+            new_enc["codec"] = codec
+        config["encoder"] = new_enc
+    else:
+        enc.setdefault("options", {}).update(opts)
+        config["encoder"] = enc
+    changed = True
+    print(f"[INFO] wivrn-config: x264 tuning preset={preset or '(default)'} tune={tune or '(default)'} threads={threads or '(default)'} bitrate={config.get('bitrate', '(default)')}", flush=True)
+if changed:
+    with open(config_file, "w") as f:
+        json.dump(config, f, indent=2)
+        f.write("\\n")
+PYEOF
+'''
+cfg.write_text(text.replace(marker, patch))
+print("Patched wivrn-config.sh: added WIVRN_BITRATE + WIVRN_X264_* post-step")
+PY
 # BC-250: HiZ hangs gfx ring at Alyx loading screen.
 # Override at runtime: RADV_DEBUG=... ./run.sh
 ENV RADV_DEBUG=nohiz
