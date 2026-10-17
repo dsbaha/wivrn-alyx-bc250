@@ -13,7 +13,7 @@
 # ---------- Stage 1: build bc250 driver ----------
 FROM fedora:44 AS builder
 
-ARG BC250_VERSION=v0.3.0
+ARG BC250_VERSION=v0.5.4
 
 RUN dnf install -y --setopt=install_weak_deps=False \
       git cmake ninja-build gcc-c++ pkgconf \
