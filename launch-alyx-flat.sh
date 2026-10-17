@@ -1,36 +1,43 @@
 #!/usr/bin/env bash
-# Flat-screen test: launch Alyx WITHOUT VR to see if it renders the main menu.
+# Flat-screen test: launch Alyx WITHOUT VR to see if it hangs the GPU.
 # This isolates: if flat ALSO hangs with gfx_0.0.0 timeout / VKRenderThread,
 # it's Alyx + RADV on BC-250, not WiVRn / xrizer / OpenXR.
-# If flat renders the menu fine, it's the VR capture path.
+# If flat runs without hanging, it's the VR capture path.
 #
-# How: temporarily set LaunchOptions to "-novr +vr_enable_fake_vr 1"
-# (Source 2 fake-VR desktop mode, no headset needed), launch, watch.
+# CRITICAL: Must run in the PLAY container (wivrn-alyx), NOT VNC.
+# VNC has NO SteamVR and NO WiVRn server running, so Alyx pops up
+# "can't find SteamVR" and exits — that's expected in VNC, not a real result.
+# Play container HAS WiVRn + xrizer, so Alyx can init OpenVR via xrizer
+# even in fake-VR mode. You won't SEE the menu (gamescope headless has no
+# visible display), but you CAN tell if it hangs: watch dmesg for gfx
+# timeout + check if hlvr stays alive.
+#
+# How: keep VR_OVERRIDE (so OpenVR -> xrizer -> WiVRn works), append
+# "-novr +vr_enable_fake_vr 1" AFTER %command% (Source 2 fake-VR desktop mode).
+# LaunchOptions -> "VR_OVERRIDE=/run/host/usr/lib64/xrizer/runtime %command% -novr +vr_enable_fake_vr 1"
 # Then restore VR LaunchOptions via ./setup-steam.sh.
 #
 # Usage:
 #   ./launch-alyx-flat.sh
-#   # In VNC (setup container), look for the Alyx window / main menu.
-#   # Watch dmesg in another terminal for gfx timeouts.
-#   # When done, stop Alyx in Steam, then:
-#   ./setup-steam.sh   # restores VR_OVERRIDE LaunchOptions
-#
-# NOTE: Run this in the VNC setup container (./setup-vnc.sh), NOT the play
-# container — VNC shows you the desktop so you can SEE the menu.
-# The play container (gamescope headless) has no visible display.
+#   # Watch dmesg in another terminal: sudo dmesg -w | grep -iE 'gfx|ring|timeout'
+#   # Check hlvr alive: sudo podman exec wivrn-alyx pgrep -a hlvr
+#   # When done, stop Alyx, then:
+#   ./setup-steam.sh   # restores VR_OVERRIDE LaunchOptions (removes -novr)
 set -euo pipefail
 
-CONTAINER="${CONTAINER:-wivrn-alyx-setup}"
+CONTAINER="${CONTAINER:-wivrn-alyx}"
 STEAM_HOME="/home/retro/.local/share/Steam"
 
-echo "Flat test container: $CONTAINER (should be wivrn-alyx-setup / VNC)"
+echo "Flat test container: $CONTAINER (must be wivrn-alyx / play, NOT VNC)"
+echo "VNC has no SteamVR / WiVRn, so flat test there pops 'can't find SteamVR'."
 echo "Checking container is running..."
 sudo podman ps --filter name="$CONTAINER" --format '{{.Names}} {{.Status}}' || true
 
 echo ""
-echo "Backing up current LaunchOptions, then setting flat mode..."
-echo "  LaunchOptions -> -novr +vr_enable_fake_vr 1"
+echo "Backing up current LaunchOptions, then setting flat mode (KEEP VR_OVERRIDE)..."
+echo "  LaunchOptions -> VR_OVERRIDE=... %command% -novr +vr_enable_fake_vr 1"
 # Reuse setup-steam.sh logic but with flat LaunchOptions: edit localconfig.vdf directly.
+# KEEP VR_OVERRIDE (so OpenVR -> xrizer works), APPEND -novr + fake VR after %command%.
 sudo podman exec "$CONTAINER" gosu retro env HOME=/home/retro bash -c '
   set -e
   for f in /home/retro/.local/share/Steam/userdata/*/config/localconfig.vdf; do
@@ -40,8 +47,8 @@ sudo podman exec "$CONTAINER" gosu retro env HOME=/home/retro bash -c '
 import re, sys
 p = sys.argv[1]
 text = open(p).read()
-# Replace LaunchOptions for 546560 with flat mode. If no 546560 block, append is skipped — setup-steam.sh handles that case.
-flat = "-novr +vr_enable_fake_vr 1"
+# Desired: VR_OVERRIDE=/run/host/usr/lib64/xrizer/runtime %command% -novr +vr_enable_fake_vr 1
+flat = "VR_OVERRIDE=/run/host/usr/lib64/xrizer/runtime %command% -novr +vr_enable_fake_vr 1"
 # Match: "546560" { ... "LaunchOptions" "old" ... } — replace old value.
 pat = re.compile(r"(\"546560\"\s*\{[^}]*?\"LaunchOptions\"\s*\")[^\"]*(\")", re.DOTALL)
 if pat.search(text):
@@ -55,14 +62,16 @@ PYEOF
 '
 
 echo ""
-echo "Launching Alyx flat (no VR)..."
-echo "In VNC, look for the Alyx window / main menu."
-echo "In another terminal, watch: sudo dmesg -w | grep -iE 'gfx|ring|timeout'"
+echo "Launching Alyx flat (no VR, fake VR) in PLAY container..."
+echo "You will NOT see the menu (gamescope headless has no visible display)."
+echo "Tell-tale is: does it hang the GPU or not?"
+echo "  Watch: sudo dmesg -w | grep -iE 'gfx|ring|timeout'"
+echo "  Check alive: sudo podman exec wivrn-alyx pgrep -a hlvr"
 sudo podman exec "$CONTAINER" gosu retro env HOME=/home/retro XDG_RUNTIME_DIR=/run/user/1000 bash -c 'steam "steam://launch/546560" >/home/retro/alyx-flat-launch.log 2>&1 & echo "flat launch sent"'
 
 echo ""
-echo "If menu renders: VR path is the problem (WiVRn / xrizer / capture)."
+echo "If it runs WITHOUT gfx timeout: VR capture path is the problem (WiVRn / xrizer / encode)."
 echo "If it ALSO hangs with gfx_0.0.0 timeout / VKRenderThread: Alyx + RADV on BC-250, not VR."
 echo ""
 echo "When done, stop Alyx in Steam, then restore VR LaunchOptions:"
-echo "  CONTAINER=$CONTAINER ./setup-steam.sh"
+echo "  ./setup-steam.sh   # removes -novr, back to VR_OVERRIDE %command% only"
