@@ -39,9 +39,17 @@ FROM ghcr.io/baz00k/gow-collection/wivrn:edge
 USER root
 
 # Runtime libs the bc250 driver needs (no build tools here)
+# + VNC-for-setup: Steam login/install/Proton is GUI-first. Headless CLI
+# hacks (steam -login, VDF edits, steam:// URLs) fight Steam's design and
+# fail silently with no screen to see. The VNC setup container (same image,
+# custom command) gives you a real Steam GUI via browser/VNC for one-time
+# setup. See setup-vnc.sh. These packages are only used by the setup path;
+# the WiVRn play path does not start VNC.
 RUN dnf install -y --setopt=install_weak_deps=False \
       libgomp libva vulkan-loader libdrm \
       libva-utils ffmpeg \
+      tigervnc-server openbox novnc python3-websockify \
+      xorg-x11-fonts-Type1 \
     && dnf clean all
 
 # Copy ONLY the installed driver + shaders from the builder
@@ -91,6 +99,11 @@ ENV GAMESCOPE_BACKEND=headless
 # build with "unable to find user retro". Keep the build as root; the
 # entrypoint drops to retro at runtime.
 COPY wivrn-config.json /etc/wivrn/config.json
+
+# VNC setup desktop script — run by setup-vnc.sh as a custom command.
+# The base entrypoint runs it as retro via gosu, bypassing wivrn-session.sh.
+COPY setup-vnc/start-vnc.sh /opt/setup-vnc/start-vnc.sh
+RUN chmod +x /opt/setup-vnc/start-vnc.sh
 
 # BC-250 WiVRn env — from bc250 docs/wivrn-guide.md
 # SLICES=2 for VR (not 4) to avoid thread over-subscription across 2 encoders.

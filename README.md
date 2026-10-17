@@ -52,15 +52,23 @@ podman run --rm --device /dev/dri:/dev/dri \
   -e LIBVA_DRIVER_NAME=bc250 \
   wivrn-alyx:bc250 vainfo --display drm --device /dev/dri/renderD128
 
-# 3. Real H.264 encode via VA-API
-podman run --rm --device /dev/dri:/dev/dri \
-  -e LIBVA_DRIVER_NAME=bc250 \
-  wivrn-alyx:bc250 ffmpeg -vaapi_device /dev/dri/renderD128 \
-    -f lavfi -i testsrc=size=1920x1080:rate=60 \
-    -vf 'format=nv12,hwupload' -c:v h264_vaapi -b:v 15M -frames:v 300 /tmp/test_enc.mp4
+# 3. ONE-TIME SETUP VIA VNC GUI (do this, not the CLI scripts below).
+#    Steam is GUI-first — login, install, Proton, Launch Options are all
+#    designed to be clicked. Headless CLI hacks fail silently with no
+#    screen to show you the prompt / error.
+./setup-vnc.sh
+# Browser -> http://<CoreOS-IP>:6080/vnc.html -> click Connect
+#   (or VNC client -> <CoreOS-IP>:5900, no password, LAN only)
+# In Steam: log in (password + email Guard code), install Alyx,
+#   right-click Alyx -> Properties -> Compatibility -> Force GE-Proton 9-27,
+#   Properties -> General -> Launch Options:
+#     VR_OVERRIDE=/run/host/usr/lib64/xrizer/runtime %command%
+# Then: ./stop-setup-vnc.sh
 
-# 4. Run
+# 4. Play
 ./run.sh
+# Connect Quest (Manual IP + 9757 if mDNS doesn't show), then:
+./launch-alyx.sh
 ```
 
 `run.sh` is `sudo podman run` with `--network host --ipc host` (no
@@ -76,9 +84,28 @@ For systemd / boot, copy `wivrn-alyx.container` +
 Same flags, Quadlet form. Inspect volumes with
 `sudo podman volume inspect wivrn-alyx-steam`.
 
-## Steam setup — no GUI needed
+## Steam setup — use VNC GUI (primary path)
 
-### Steam Guard
+Steam is GUI-first. Login, Steam Guard, install progress, Proton download,
+Compatibility settings, Launch Options — all designed to be clicked. The
+headless CLI scripts below are fallback only; they fail silently with no
+screen to show you the prompt / error. Use VNC for one-time setup:
+
+```bash
+./setup-vnc.sh
+# Browser -> http://<CoreOS-IP>:6080/vnc.html -> click Connect
+# VNC client -> <CoreOS-IP>:5900, no password, LAN only, stop when done
+# In Steam: log in, install Alyx, set Proton + Launch Options (see Quick start)
+./stop-setup-vnc.sh
+```
+
+VNC has NO password and is LAN-only — do NOT expose 5900/6080 to the
+internet. Stop the setup container when done. It uses the SAME named
+volumes as `run.sh`, so Steam data carries over to the play container.
+
+### CLI fallback (if you really can't use VNC)
+
+#### Steam Guard
 
 Steam Guard is Valve's 2FA. The container looks like a brand-new device, so
 the first login asks for a one-time code. If you only have the **email**
@@ -118,7 +145,7 @@ Or copy your already-logged-in host Steam files into the volume (see
 needed. Treat the `wivrn-alyx-steam` volume as sensitive —
 it holds auth tokens.
 
-### Install Alyx
+### CLI fallback: Install Alyx
 
 ```bash
 ./install-alyx.sh
@@ -128,7 +155,7 @@ That uses `steam steam://install/546560` (NOT steamcmd — steamcmd would
 install to a different Steam root `~/Steam` and the Steam client + WiVRn
 would not see it). It polls for `appmanifest_546560.acf`.
 
-### Alyx Proton + launch options
+### CLI fallback: Alyx Proton + launch options
 
 With Steam stopped in the container, run:
 
@@ -254,15 +281,18 @@ Wi-Fi has bandwidth headroom; latency is the bottleneck, so H.264 wins here.
 ## Files
 
 - `Containerfile` — multi-stage: builder compiles bc250 driver, final stage
-  copies only driver + shaders onto GoW `wivrn:edge`.
+  copies only driver + shaders onto GoW `wivrn:edge`, plus VNC setup packages.
 - `wivrn-config.json` — WiVRn VA-API, H.264, 50 Mbps.
-- `run.sh` — Podman run for Alyx.
-- `steam-login.sh` — one-shot Steam login as retro (fixes exec-as-root ignore).
-- `install-alyx.sh` — install Alyx via Steam client (NOT steamcmd).
+- `run.sh` — Podman run for Alyx (WiVRn play container).
+- `setup-vnc.sh` / `stop-setup-vnc.sh` — one-time Steam GUI via VNC/browser
+  (PRIMARY setup path). Same image + same volumes, Xvnc + openbox + Steam.
+- `setup-vnc/start-vnc.sh` — VNC desktop startup (inside container).
+- `steam-login.sh` — CLI fallback: one-shot Steam login as retro.
+- `install-alyx.sh` — CLI fallback: install Alyx via Steam client.
 - `launch-alyx.sh` — launch Alyx after Quest connects ("waiting for app").
 - `check-apps.sh` — diagnose empty "pick an application" picker.
 - `check-network.sh` — diagnose server not showing on local network.
-- `setup-steam.sh` — one-time Alyx Proton + launch-option edits, no GUI.
+- `setup-steam.sh` — CLI fallback: Alyx Proton + launch-option VDF edits.
 - `wivrn-alyx.container` — Quadlet / systemd version of `run.sh`.
 - `wivrn-alyx-steam.volume` / `wivrn-alyx-wivrn.volume` — named-volume
   definitions for Quadlet (Fedora CoreOS, no bind mounts).
@@ -278,9 +308,12 @@ Wi-Fi has bandwidth headroom; latency is the bottleneck, so H.264 wins here.
 
 ## Troubleshooting
 
+- Headless CLI setup keeps failing silently → use VNC: `./setup-vnc.sh`,
+  do Steam login/install/Proton in the GUI, `./stop-setup-vnc.sh`.
+  Steam is GUI-first; CLI hacks (steam -login, VDF edits) are fallback only.
 - `steam -login` seems ignored → you ran it via `podman exec` (root,
-  HOME=/root) while Steam was already running. Use `./steam-login.sh`.
-- `steamcmd not found` / `steamcmd: command not found` → expected.
+  HOME=/root) while Steam was already running. Use `./steam-login.sh`
+  or, better, `./setup-vnc.sh`.
   This image installs the `steam` client, NOT `steamcmd`. Use
   `./install-alyx.sh` (Steam client) and `steam -login`, not `steamcmd`.
 - "Waiting for an application to start" → no game launched yet. Run
