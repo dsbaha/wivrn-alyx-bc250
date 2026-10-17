@@ -70,7 +70,7 @@ echo ""
 echo "Checking login cached in volume (loginusers.vdf + ssfn*)..."
 sudo podman run --rm \
   -v wivrn-alyx-steam:/home/retro/.local/share/Steam:Z \
-  wivrn-alyx:bc250 bash -c 'ls -l ~/.local/share/Steam/config/loginusers.vdf ~/.local/share/Steam/ssfn* 2>&1 | head -n 5; echo "---"; grep -o "\"AccountName\"[^,]*" ~/.local/share/Steam/config/loginusers.vdf 2>/dev/null | head -n 2 || echo "loginusers.vdf not readable — login may have failed"'
+  wivrn-alyx:bc250 bash -c 'ls -l /home/retro/.local/share/Steam/config/loginusers.vdf /home/retro/.local/share/Steam/ssfn* 2>&1 | head -n 5; echo "---"; grep -o "\"AccountName\"[^,]*" /home/retro/.local/share/Steam/config/loginusers.vdf 2>/dev/null | head -n 2 || echo "loginusers.vdf not readable — login may have failed"'
 
 echo ""
 echo "Done. Restart the normal container:"

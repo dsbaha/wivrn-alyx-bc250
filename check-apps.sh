@@ -19,21 +19,21 @@ sudo podman exec "$CONTAINER" bash -c "ss -ltn 2>/dev/null | grep 9757 || grep -
 
 echo ""
 echo "=== WiVRn config actually in use (user config overrides /etc) ==="
-sudo podman exec "$CONTAINER" bash -c "cat ~/.config/wivrn/config.json 2>/dev/null || echo 'no ~/.config/wivrn/config.json'; echo '--- /etc/wivrn/config.json ---'; cat /etc/wivrn/config.json 2>/dev/null || echo 'no /etc/wivrn/config.json'"
+sudo podman exec "$CONTAINER" bash -c "cat /home/retro/.config/wivrn/config.json 2>/dev/null || echo 'no /home/retro/.config/wivrn/config.json'; echo '--- /etc/wivrn/config.json ---'; cat /etc/wivrn/config.json 2>/dev/null || echo 'no /etc/wivrn/config.json'"
 
 echo ""
 echo "=== Steam VR manifest? ==="
 sudo podman exec "$CONTAINER" bash -c "
-  echo '-- ~/.local/share/Steam/config/steamapps.vrmanifest --'
-  ls -l ~/.local/share/Steam/config/steamapps.vrmanifest 2>&1 | head -n 2
-  echo '-- ~/.steam/debian-installation/config/steamapps.vrmanifest --'
-  ls -l ~/.steam/debian-installation/config/steamapps.vrmanifest 2>&1 | head -n 2
+  echo '-- /home/retro/.local/share/Steam/config/steamapps.vrmanifest --'
+  ls -l /home/retro/.local/share/Steam/config/steamapps.vrmanifest 2>&1 | head -n 2
+  echo '-- /home/retro/.steam/debian-installation/config/steamapps.vrmanifest --'
+  ls -l /home/retro/.steam/debian-installation/config/steamapps.vrmanifest 2>&1 | head -n 2
 "
 
 echo ""
 echo "=== Is Alyx installed? (AppID 546560, BOTH Steam roots) ==="
 sudo podman exec "$CONTAINER" bash -c "
-  for root in ~/.local/share/Steam ~/.steam/debian-installation ~/.steam/steam; do
+  for root in /home/retro/.local/share/Steam /home/retro/.steam/debian-installation /home/retro/.steam/steam; do
     echo \"-- \$root --\"
     ls \$root/steamapps/common/ 2>/dev/null | grep -i alyx || echo '  no Alyx dir in steamapps/common/'
     ls \$root/steamapps/appmanifest_546560.acf 2>/dev/null && echo '  Alyx manifest present' || echo '  no appmanifest_546560.acf'

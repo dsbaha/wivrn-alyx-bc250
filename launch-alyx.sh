@@ -19,7 +19,7 @@ echo "Checking container is running..."
 sudo podman ps --filter name="$CONTAINER" --format '{{.Names}} {{.Status}}' || true
 
 echo "Checking Alyx is installed (appmanifest_546560.acf)..."
-if ! sudo podman exec "$CONTAINER" test -f ~/.local/share/Steam/steamapps/appmanifest_546560.acf; then
+if ! sudo podman exec "$CONTAINER" test -f /home/retro/.local/share/Steam/steamapps/appmanifest_546560.acf; then
   echo "ERROR: Alyx NOT installed. Install first:"
   echo "  ./install-alyx.sh"
   echo "  ./setup-steam.sh"
