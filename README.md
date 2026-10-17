@@ -123,13 +123,23 @@ globally to xrizer just for Alyx — use the per-game `VR_OVERRIDE` above.
    `WiVRn/WiVRn-APK`). Client and server must be the same WiVRn version.
 2. In the WiVRn app: **disable hand tracking**, wake the physical controllers
    **before** connecting. Hand tracking on + controllers asleep = `ERROR_SESSION_LOST`.
-3. Connect to the server. Pick Alyx from WiVRn's in-headset application
-   menu. If you instead see "pick an application to start streaming"
-   with an empty list, Alyx isn't installed yet (see below).
+3. Connect to the server — via mDNS if it shows, or Manual / Add server
+   with the CoreOS box IP + 9757 if mDNS is broken (manual works fine).
+4. Once the headset says "waiting for an application to start", launch
+   Alyx from the CoreOS box in a second terminal:
+
+   ```bash
+   ./launch-alyx.sh
+   ```
+
+   That tells the Steam already running in the container to launch Alyx
+   in VR. WiVRn does NOT auto-start a game unless `WIVRN_APPLICATION`
+   is set — "waiting for an application" is normal until you launch one.
 
    NOTE: `WIVRN_APPLICATION` auto-launch was reverted — it broke Quadlet
    parsing and stopped the container from starting, so the server
    never showed on the LAN. Don't re-add it to the Quadlet file.
+   Use `./launch-alyx.sh` instead.
 
 ### "Pick an application" with an empty list?
 
@@ -153,6 +163,18 @@ podman exec -it wivrn-alyx steamcmd +login <user> <pass> +app_update 546560 vali
 # then run ./setup-steam.sh (Proton + VR_OVERRIDE) if you haven't yet
 # then restart the container and reconnect from the Quest
 ```
+
+### "Waiting for an application to start"?
+
+Normal — headset is connected, wivrn-server is up, but no OpenXR app is
+running yet. From a second terminal on the CoreOS box:
+
+```bash
+./launch-alyx.sh
+```
+
+If Alyx falls back to desktop (no HMD image), `setup-steam.sh` didn't
+run or LaunchOptions are wrong — see Troubleshooting.
 
 ### Server not showing up on the local network?
 
@@ -203,6 +225,7 @@ Wi-Fi has bandwidth headroom; latency is the bottleneck, so H.264 wins here.
   copies only driver + shaders onto GoW `wivrn:edge`.
 - `wivrn-config.json` — WiVRn VA-API, H.264, 50 Mbps.
 - `run.sh` — Podman run for Alyx.
+- `launch-alyx.sh` — launch Alyx after Quest connects ("waiting for app").
 - `check-apps.sh` — diagnose empty "pick an application" picker.
 - `check-network.sh` — diagnose server not showing on local network.
 - `setup-steam.sh` — one-time Alyx Proton + launch-option edits, no GUI.
@@ -221,6 +244,8 @@ Wi-Fi has bandwidth headroom; latency is the bottleneck, so H.264 wins here.
 
 ## Troubleshooting
 
+- "Waiting for an application to start" → no game launched yet. Run
+  `./launch-alyx.sh` from the CoreOS box while the headset is connected.
 - Server not showing on local network → run `./check-network.sh`.
   Most common: firewalld blocking 5353/9757, or container exited on
   restart (name conflict). Bypass mDNS via Manual / Add server + host IP.
