@@ -24,7 +24,8 @@ DeviceCgroupRule=c 244:* rwm
 Volume=wivrn-alyx-steam.volume:/home/retro/.local/share/Steam:Z
 Volume=wivrn-alyx-wivrn.volume:/home/retro/.config/wivrn:Z
 Environment=GAMESCOPE_BACKEND=headless
-Environment=RADV_DEBUG=nohiz  # BC-250 loading-screen gfx hang: HiZ off; change to nohiz,nongg to test NGG off
+# BC-250 loading-screen gfx hang: HiZ off. Change to nohiz,nongg to test NGG off.
+Environment=RADV_DEBUG=nohiz
 # NOTE: Do NOT add WIVRN_APPLICATION here. The value
 # ["steam", "steam://launch/546560/VR"] contains spaces + quotes, and
 # systemd/Quadlet splits Environment= on spaces — the unquoted form
@@ -34,7 +35,8 @@ Environment=RADV_DEBUG=nohiz  # BC-250 loading-screen gfx hang: HiZ off; change 
 Environment=LIBVA_DRIVER_NAME=bc250
 Environment=BC250_FAST_MODE=1
 Environment=BC250_SLICES_PER_FRAME=2
-Environment=BC250_H264_BACKEND=x264  # change to compute for GPU encode, see README
+# Change to compute for GPU encode, see README.
+Environment=BC250_H264_BACKEND=x264
 Environment=OMP_WAIT_POLICY=PASSIVE
 Environment=GOMP_SPINCOUNT=0
 

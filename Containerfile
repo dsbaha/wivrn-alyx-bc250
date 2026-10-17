@@ -89,7 +89,9 @@ PY
 # Default to headless backend for Podman / CoreOS. Override to `wayland`
 # only if you run under Wolf (which provides a virtual compositor).
 ENV GAMESCOPE_BACKEND=headless
-ENV RADV_DEBUG=nohiz  # BC-250: HiZ hangs gfx ring at Alyx loading screen; override with RADV_DEBUG=... ./run.sh
+# BC-250: HiZ hangs gfx ring at Alyx loading screen.
+# Override at runtime: RADV_DEBUG=... ./run.sh
+ENV RADV_DEBUG=nohiz
 # 2HW + 1SW topology: left/right eye via HW VA-API, alpha/foveation via SW.
 # See docs/wivrn-guide.md in the bc250 repo for the preset this mirrors.
 # NOTE: Only copy to /etc/wivrn/config.json (system fallback). Do NOT copy to
