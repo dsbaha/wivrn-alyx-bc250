@@ -279,6 +279,28 @@ medium settings, moderate bitrate. That's why the overlay defaults to
 and `BC250_SLICES_PER_FRAME=2` for VR. Switch `BC250_H264_BACKEND` to
 `compute` only if CPU becomes the bottleneck.
 
+### BC-250 TTM / VRAM — use 6 GiB, not 13.7 GiB
+
+BC-250 is 16 GiB unified (CPU + GPU share the same GDDR6). The default TTM
+pool (`pages_limit = pool_size = 3584000`) is 13.67 GiB — 85% of total RAM —
+leaving ~2 GiB for the CPU side (Proton, Steam, WiVRn, game logic). That
+crashes / GPU-hangs when Alyx starts allocating.
+
+Tested 2026-10-17:
+- **13.67 GiB (3584000)** — crashes / GPU hang
+- **8 GiB (2097152)** — still crashed
+- **6 GiB (1572864)** — **stable, no crashes** — 6 GiB VRAM + 10 GiB CPU
+
+`pages_limit` / `pool_size` are in 4 KiB pages: `pages = GiB × 262144`.
+Set both to `1572864` in your modprobe config
+(`options bc250 ttm_pages_limit=1572864 ttm_pool_size=1572864` — use the
+exact param names in your existing file), rebuild initramfs, reboot.
+
+The failure at 8–13 GiB is a **GPU-side hang** (`wait_fence waiting on
+client fence timed out`, `amdgpu ring timeout`), NOT an OOM killer. Lowering
+TTM to 6 GiB fixes the allocation stall; if you still see fence timeouts,
+drop WiVRn bitrate 50 → 30 Mbps and keep `BC250_H264_BACKEND=x264`.
+
 No AV1 in the bc250 driver docs (H.264 + HEVC only). AV1 would help bandwidth
 but hurts latency, and on BC-250 there is no HW AV1 encoder — it would need
 a new Vulkan-compute AV1 encoder stealing CUs from the game. Local 5 GHz
