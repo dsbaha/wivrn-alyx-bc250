@@ -47,7 +47,6 @@ sudo podman logs --tail 40 "$CONTAINER" 2>&1 | tail -n 40
 
 echo ""
 echo "If Alyx is NOT installed: install it first, then reconnect."
-echo "  podman exec -it $CONTAINER steamcmd +login <user> <pass> +app_update 546560 validate +quit"
-echo "  (or use Steam — see README 'Steam setup')"
+echo "  ./install-alyx.sh   (uses Steam client, NOT steamcmd — steamcmd is not in this image)"
+echo "  ./setup-steam.sh"
 echo "If Alyx IS installed but picker is still empty: check the manifest lines above."
-echo "If you want auto-launch on connect: ensure WIVRN_APPLICATION is set (run.sh sets it)."
