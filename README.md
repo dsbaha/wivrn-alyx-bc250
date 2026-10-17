@@ -152,6 +152,27 @@ podman exec -it wivrn-alyx steamcmd +login <user> <pass> +app_update 546560 vali
 # then restart the container and reconnect from the Quest
 ```
 
+### Server not showing up on the local network?
+
+Discovery is mDNS/Avahi (UDP 5353) + WiVRn on TCP/UDP 9757. Run:
+
+```bash
+./check-network.sh
+```
+
+It checks: container running, host IP/subnet, 9757 + 5353 listening,
+wivrn-server + Avahi inside the container, host firewalld, logs, and
+mDNS broadcast. Most common cause on CoreOS: firewalld blocking 5353 /
+9757 — Podman `--network host` does NOT add firewall rules. Fix:
+
+```bash
+sudo firewall-cmd --permanent --add-port=5353/udp --add-port=9757/tcp --add-port=9757/udp
+sudo firewall-cmd --reload
+```
+
+If the server is running but discovery is broken, bypass mDNS: in the
+Quest WiVRn app use Manual / Add server and type the host IP + 9757.
+
 ## How video gets there
 
 Alyx renders left/right eye via Proton → Vulkan → RADV → BC-250 GPU (stays
@@ -181,6 +202,7 @@ Wi-Fi has bandwidth headroom; latency is the bottleneck, so H.264 wins here.
 - `wivrn-config.json` — WiVRn VA-API, H.264, 50 Mbps.
 - `run.sh` — Podman run for Alyx.
 - `check-apps.sh` — diagnose empty "pick an application" picker.
+- `check-network.sh` — diagnose server not showing on local network.
 - `setup-steam.sh` — one-time Alyx Proton + launch-option edits, no GUI.
 - `wivrn-alyx.container` — Quadlet / systemd version of `run.sh`.
 - `wivrn-alyx-steam.volume` / `wivrn-alyx-wivrn.volume` — named-volume
@@ -197,6 +219,9 @@ Wi-Fi has bandwidth headroom; latency is the bottleneck, so H.264 wins here.
 
 ## Troubleshooting
 
+- Server not showing on local network → run `./check-network.sh`.
+  Most common: firewalld blocking 5353/9757, or container exited on
+  restart (name conflict). Bypass mDNS via Manual / Add server + host IP.
 - "Pick an application to start streaming" with empty list → Alyx not
   installed yet, or Steam manifest missing. Run `./check-apps.sh` on the
   CoreOS box. `run.sh` now sets `WIVRN_APPLICATION` to auto-launch Alyx,
