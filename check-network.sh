@@ -18,7 +18,11 @@ echo "(If you see a second container with the same name, the old one is still"
 echo " holding the name — 'podman rm -f wivrn-alyx' then re-run ./run.sh.)"
 
 echo ""
-echo "=== 2. Host IP + subnet (Quest must be on the same subnet) ==="
+echo "=== 1b. Quadlet / systemd unit status (if you use Quadlet) ==="
+systemctl --user status wivrn-alyx.service --no-pager 2>&1 | head -n 20 || true
+echo "(If the unit is 'failed' or 'bad-setting', the .container file failed"
+echo " to parse — e.g. an unquoted Environment= with spaces/quotes. Pull"
+echo " latest, copy the fixed .container file, daemon-reload, restart.)"
 ip -4 addr show scope global | grep -E 'inet |^[0-9]+:' || true
 hostname -I 2>/dev/null || true
 

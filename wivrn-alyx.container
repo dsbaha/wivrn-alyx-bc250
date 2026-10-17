@@ -24,7 +24,12 @@ DeviceCgroupRule=c 244:* rwm
 Volume=wivrn-alyx-steam.volume:/home/retro/.local/share/Steam:Z
 Volume=wivrn-alyx-wivrn.volume:/home/retro/.config/wivrn:Z
 Environment=GAMESCOPE_BACKEND=headless
-Environment=WIVRN_APPLICATION=["steam", "steam://launch/546560/VR"]
+# NOTE: Do NOT add WIVRN_APPLICATION here. The value
+# ["steam", "steam://launch/546560/VR"] contains spaces + quotes, and
+# systemd/Quadlet splits Environment= on spaces — the unquoted form
+# breaks unit parsing and the container never starts, so WiVRn never
+# advertises on the LAN. That was the regression in 214c58b. Auto-launch
+# is opt-in via run.sh only (see commented line there), not in Quadlet.
 Environment=LIBVA_DRIVER_NAME=bc250
 Environment=BC250_FAST_MODE=1
 Environment=BC250_SLICES_PER_FRAME=2

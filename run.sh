@@ -22,6 +22,12 @@ set -euo pipefail
 sudo podman volume exists wivrn-alyx-steam || sudo podman volume create wivrn-alyx-steam
 sudo podman volume exists wivrn-alyx-wivrn || sudo podman volume create wivrn-alyx-wivrn
 
+# NOTE: WIVRN_APPLICATION auto-launch was reverted (regression in 214c58b).
+# It broke Quadlet parsing (spaces/quotes in Environment=) and could stop
+# the container from starting, so WiVRn never advertised on the LAN.
+# To opt back into auto-launch with run.sh only, add this line above
+# the LIBVA_DRIVER_NAME line in the podman run below:
+#   -e WIVRN_APPLICATION='["steam", "steam://launch/546560/VR"]' \
 exec sudo podman run --rm -it \
   --name wivrn-alyx \
   --network host \
@@ -37,7 +43,6 @@ exec sudo podman run --rm -it \
   -v wivrn-alyx-steam:/home/retro/.local/share/Steam:Z \
   -v wivrn-alyx-wivrn:/home/retro/.config/wivrn:Z \
   -e GAMESCOPE_BACKEND=headless \
-  -e WIVRN_APPLICATION='["steam", "steam://launch/546560/VR"]' \
   -e LIBVA_DRIVER_NAME=bc250 \
   -e BC250_FAST_MODE=1 \
   -e BC250_SLICES_PER_FRAME=2 \

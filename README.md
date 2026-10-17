@@ -123,11 +123,13 @@ globally to xrizer just for Alyx — use the per-game `VR_OVERRIDE` above.
    `WiVRn/WiVRn-APK`). Client and server must be the same WiVRn version.
 2. In the WiVRn app: **disable hand tracking**, wake the physical controllers
    **before** connecting. Hand tracking on + controllers asleep = `ERROR_SESSION_LOST`.
-3. Connect to the server. `run.sh` sets
-   `WIVRN_APPLICATION=["steam", "steam://launch/546560/VR"]`, so WiVRn
-   auto-launches Alyx on connect — you should not have to pick anything.
-   If you instead see "pick an application to start streaming" with an
-   empty list, Alyx isn't installed yet (see below).
+3. Connect to the server. Pick Alyx from WiVRn's in-headset application
+   menu. If you instead see "pick an application to start streaming"
+   with an empty list, Alyx isn't installed yet (see below).
+
+   NOTE: `WIVRN_APPLICATION` auto-launch was reverted — it broke Quadlet
+   parsing and stopped the container from starting, so the server
+   never showed on the LAN. Don't re-add it to the Quadlet file.
 
 ### "Pick an application" with an empty list?
 
@@ -224,8 +226,7 @@ Wi-Fi has bandwidth headroom; latency is the bottleneck, so H.264 wins here.
   restart (name conflict). Bypass mDNS via Manual / Add server + host IP.
 - "Pick an application to start streaming" with empty list → Alyx not
   installed yet, or Steam manifest missing. Run `./check-apps.sh` on the
-  CoreOS box. `run.sh` now sets `WIVRN_APPLICATION` to auto-launch Alyx,
-  so a fresh pull + restart should skip the picker once Alyx is installed.
+  CoreOS box. Pick Alyx from the in-headset menu once it's installed.
 - `xdg_backend couldn't connect to wayland display` → gamescope was
   trying `--backend wayland` (nested in a host compositor, which Wolf
   provides but headless Podman does not). Fixed in this repo: the
