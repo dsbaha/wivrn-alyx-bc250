@@ -36,6 +36,7 @@ exec sudo podman run --rm -it \
   --device-cgroup-rule 'c 244:* rwm' \
   -v wivrn-alyx-steam:/home/retro/.local/share/Steam:Z \
   -v wivrn-alyx-wivrn:/home/retro/.config/wivrn:Z \
+  -e GAMESCOPE_BACKEND=headless \
   -e LIBVA_DRIVER_NAME=bc250 \
   -e BC250_FAST_MODE=1 \
   -e BC250_SLICES_PER_FRAME=2 \

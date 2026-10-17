@@ -51,7 +51,36 @@ RUN dnf install -y --setopt=install_weak_deps=False \
 COPY --from=builder /tmp/bc250-install/usr/lib64/dri/bc250_drv_video.so /usr/lib64/dri/bc250_drv_video.so
 COPY --from=builder /tmp/bc250-install/usr/share/bc250/shaders /usr/share/bc250/shaders
 
-# WiVRn config — VA-API, H.264
+# Headless fix: GoW hardcodes gamescope `--backend wayland`, which means
+# "nested inside a host Wayland compositor". Under Wolf, Wolf provides
+# that compositor (start_virtual_compositor). On headless Podman / CoreOS
+# there is NO host compositor, so gamescope fails with
+# "xdg_backend couldn't connect to wayland display".
+# Patch gamescope-lib.sh to respect GAMESCOPE_BACKEND (default headless),
+# and make wivrn-session.sh create $XDG_RUNTIME_DIR (gamescope needs it
+# to exist, and /run/user/<uid> doesn't exist by default in the container).
+RUN python3 - <<'PY'
+import pathlib
+lib = pathlib.Path("/opt/gow/gamescope-lib.sh")
+text = lib.read_text()
+old = "--backend wayland"
+new = '--backend "${GAMESCOPE_BACKEND:-headless}"'
+assert old in text, "gamescope-lib.sh no longer contains '--backend wayland' — check upstream"
+lib.write_text(text.replace(old, new))
+print("Patched gamescope-lib.sh: --backend wayland -> GAMESCOPE_BACKEND (default headless)")
+
+sess = pathlib.Path("/opt/gow/wivrn-session.sh")
+stext = sess.read_text()
+old2 = 'export XDG_RUNTIME_DIR\n'
+new2 = 'export XDG_RUNTIME_DIR\nmkdir -p "$XDG_RUNTIME_DIR"\n'
+assert old2 in stext, "wivrn-session.sh no longer contains 'export XDG_RUNTIME_DIR' — check upstream"
+sess.write_text(stext.replace(old2, new2, 1))
+print("Patched wivrn-session.sh: mkdir -p $XDG_RUNTIME_DIR")
+PY
+
+# Default to headless backend for Podman / CoreOS. Override to `wayland`
+# only if you run under Wolf (which provides a virtual compositor).
+ENV GAMESCOPE_BACKEND=headless
 # 2HW + 1SW topology: left/right eye via HW VA-API, alpha/foveation via SW.
 # See docs/wivrn-guide.md in the bc250 repo for the preset this mirrors.
 # NOTE: Only copy to /etc/wivrn/config.json (system fallback). Do NOT copy to

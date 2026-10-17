@@ -169,6 +169,12 @@ Wi-Fi has bandwidth headroom; latency is the bottleneck, so H.264 wins here.
 
 ## Troubleshooting
 
+- `xdg_backend couldn't connect to wayland display` → gamescope was
+  trying `--backend wayland` (nested in a host compositor, which Wolf
+  provides but headless Podman does not). Fixed in this repo: the
+  Containerfile patches `gamescope-lib.sh` to use
+  `GAMESCOPE_BACKEND` (default `headless`), and `run.sh` / Quadlet set
+  `GAMESCOPE_BACKEND=headless`. Pull latest and rebuild.
 - `vainfo` doesn't list BC-250 → check `/dev/dri/renderD128` exists,
   user is in `video` + `render` groups, `LIBVA_DRIVER_NAME=bc250`.
 - Game starts on virtual screen, no HMD image / tracking → it fell back to
