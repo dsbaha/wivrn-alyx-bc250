@@ -27,20 +27,22 @@ if ! sudo podman exec "$CONTAINER" test -f /home/retro/.local/share/Steam/steama
 fi
 echo "Alyx installed."
 
-# Auto-set Alyx Low before EVERY launch (prevents GPU hang / crash).
-# Low is required on BC-250 — if Steam Cloud reverted video.txt to
-# Medium/High, Alyx will hang the gfx ring again. So launch-alyx.sh
-# forces Low (fidelity 0) in BOTH game-dir and Steam Cloud copies
-# before launching, every time. Set ALYX_LOW=0 to skip (e.g. testing Medium).
+# Auto-set Alyx fidelity before EVERY launch (prevents GPU hang / crash).
+# Default 0 (Low) — the crash-safe setting on BC-250. If Steam Cloud reverted
+# video.txt to another level, Alyx can hang the gfx ring again, so
+# launch-alyx.sh forces the fidelity in BOTH game-dir and Steam Cloud copies
+# before launching, every time.
+#   ALYX_FIDELITY=1 ./launch-alyx.sh  — try Medium (1). 2=High, 3=Ultra.
+#   ALYX_LOW=0 ./launch-alyx.sh       — skip entirely (manage video.txt yourself).
 if [[ "${ALYX_LOW:-1}" != "0" ]]; then
-  echo "Auto-setting Alyx Low (ALYX_LOW=1, set ALYX_LOW=0 to skip)..."
-  CONTAINER="$CONTAINER" ./set-alyx-low.sh >/tmp/alyx-low.log 2>&1 || {
+  echo "Auto-setting Alyx fidelity ${ALYX_FIDELITY:-0} (ALYX_FIDELITY=1 for Medium, ALYX_LOW=0 to skip)..."
+  CONTAINER="$CONTAINER" FIDELITY="${ALYX_FIDELITY:-0}" ./set-alyx-low.sh >/tmp/alyx-low.log 2>&1 || {
     echo "WARNING: set-alyx-low.sh failed (see /tmp/alyx-low.log) — launching anyway."
-    echo "If Alyx crashes, check video.txt fidelity is 0."
+    echo "If Alyx crashes, check video.txt fidelity."
   }
-  echo "Alyx Low set (see /tmp/alyx-low.log for before/after)."
+  echo "Alyx fidelity set (see /tmp/alyx-low.log for before/after)."
 else
-  echo "ALYX_LOW=0 — skipping auto Low (you asked for non-Low)."
+  echo "ALYX_LOW=0 — skipping auto fidelity (you asked for manual control)."
 fi
 
 echo "Launching Alyx via Steam (steam://launch/546560/VR)..."
