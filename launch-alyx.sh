@@ -52,7 +52,7 @@ echo "check and never reaches the retro Steam in gamescope. Use gosu retro."
 echo "Also: old runs left a ROOT-owned /tmp/alyx-launch.log in sticky /tmp, which"
 echo "retro cannot overwrite — remove it first, and log to retro's HOME instead."
 sudo podman exec "$CONTAINER" rm -f /tmp/alyx-launch.log
-sudo podman exec "$CONTAINER" gosu retro env HOME=/home/retro XDG_RUNTIME_DIR=/run/user/1000 bash -c 'steam "steam://launch/546560/VR" >/home/retro/alyx-launch.log 2>&1 & echo "launch command sent, pid $!"'
+sudo podman exec "$CONTAINER" gosu retro env HOME=/home/retro XDG_RUNTIME_DIR=/run/user/1000 OXR_RECENTER_STAGE=${OXR_RECENTER_STAGE:-1} bash -c 'steam "steam://launch/546560/VR" >/home/retro/alyx-launch.log 2>&1 & echo "launch command sent, pid $!"'
 echo "Log inside container: /home/retro/alyx-launch.log (as retro)"
 echo "View it: sudo podman exec $CONTAINER cat /home/retro/alyx-launch.log"
 
